@@ -399,7 +399,8 @@ Each brief constraint mapped to the phase and test that proves it.
 |---|---|---|
 | Graph ≤4 nodes exactly, per spec 11 §8 order | P4 | `test_graph_shape.py` |
 | Memory hits bypass the LLM | P4 | `test_graph_memory_bypass.py` (FakeLLM fails on invocation) |
-| Structured output `{account_code, confidence, reason ≤20 words}` | P4 | `test_graph_nodes` / schema validation |
+| Structured output `{account_code, confidence, reason ≤20 words}` | P4, P9 | `test_structured_output.py` — 20-word cap, field requirements, confidence bounds |
+| Temperature 0.1 (spec 11 §8) | P4, P9 | `test_structured_output.py` — default *and* that it reaches the client |
 | `account_code` validated against CoA in code; out-of-CoA ⇒ forced low confidence + queue | P3, P4 | `test_coa_validation.py` |
 | Overrides write `vendor_memory`; next occurrence auto + "learned" | P4 | `test_memory_learning.py` |
 | Dashboard charts the memory-bend (hit rate + cost trend across runs) | P6, P8 | two-run API series assertion + Metrics screen |

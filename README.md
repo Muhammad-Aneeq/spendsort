@@ -103,7 +103,7 @@ second run is measurably cheaper, and your override comes back marked *learned*.
 ### Everything else
 
 ```bash
-make test        # 257 backend + 22 frontend tests. LLM mocked: no key, no spend
+make test        # 279 backend + 22 frontend tests. LLM mocked: no key, no spend
 make eval        # the 100-case eval suite and the ≥95% auto-precision gate
 make eval-live   # the same suite against the REAL model (needs a key; ~$0.01–0.02)
 make seed        # regenerate examples/ and evals/cases.jsonl from fixed seeds
@@ -188,7 +188,7 @@ Honest state, 2026-09-03. What works, what is untested, and what is missing.
 - CSV intake hardening, and the export's four required fields
 - The memory bend, asserted as a test rather than a hope
 - All eight spec §7 endpoints, checked against the live OpenAPI schema
-- **279 tests total** (257 backend, 22 frontend); ruff, mypy and tsc clean
+- **301 tests total** (279 backend, 22 frontend); ruff, mypy and tsc clean
 
 ### ⚠️ Real gaps — read these before trusting a number
 
@@ -233,7 +233,7 @@ vitest. Per spec 00 F.
 backend/
   app/        FastAPI, the 4-node agent, services, routers
   ledgerfab/  synthetic finance data engine (spec 00 A3)
-  tests/      257 tests
+  tests/      279 tests
 evals/        100 cases, the harness, the CI gate
 examples/     ledgerfab-generated CSVs with published content hashes
 frontend/     five screens + local aurora components (spec 00 A2)

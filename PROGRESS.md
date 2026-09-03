@@ -580,7 +580,7 @@ did, and leaving two sets of numbers in the repo would have been worse than eith
 **Final state**
 | Check | Result |
 |---|---|
-| backend tests | **257 passed** |
+| backend tests | **279 passed** |
 | eval gate | **13 passed** — auto-precision 96.10% ≥ 95% |
 | frontend render tests | **22 passed** |
 | ruff / ruff-format / mypy / tsc | all clean |
@@ -598,3 +598,15 @@ did, and leaving two sets of numbers in the repo would have been worse than eith
 
 That is the whole gap list. It is repeated in README STATUS, `evals/README.md`, MODEL_COSTS.md
 and FINAL_REPORT.md, so a green number cannot be quoted out of context.
+
+**A coverage gap the final audit caught in my own plan.** Reading PLAN.md's traceability table
+back against the tree, one row pointed at `test_graph_nodes` — **a file that does not exist**. Two
+explicit spec 11 §8 clauses were implemented but never asserted: *"Reason ≤ 20 words"* (the
+truncation validator) and *"Temperature 0.1"*. Both were true in the code and unproven by the
+suite, which is exactly the kind of claim a traceability table exists to catch. Added
+`test_structured_output.py` — **22 tests** covering the word cap (truncated, not rejected;
+whitespace collapsed; the mock's own reasons obey it), the required fields, confidence rejected
+outside 0–1, that temperature 0.1 both defaults *and reaches the client*, and that mock answers
+are deterministic. Table corrected to name the real file.
+
+Backend total is now **279 tests**; **301** including the frontend.

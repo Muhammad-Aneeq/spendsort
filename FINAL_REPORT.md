@@ -3,7 +3,7 @@
 **Built 2026-09-03.** Expense categorization with confidence gates and a learning vendor memory —
 the Finance AI Lab series opener, per `docs/spec_11_spendsort.md` and `docs/spec_00_shared_foundations.md`.
 
-**Bottom line:** the product is complete and tested end to end. 279 tests pass, the eval gate is
+**Bottom line:** the product is complete and tested end to end. 301 tests pass, the eval gate is
 green, the memory bend is real and measured, and the whole demo runs with no API key and no
 spend. Two things are genuinely unverified and neither is faked: **nobody has looked at the UI**
 (no browser here), and **the eval number is mock-mode** (no API key here). Both have a one-line
@@ -76,7 +76,7 @@ sent to the model. Nothing was dropped."*
 ### Everything else
 
 ```bash
-make test        # 257 backend + 22 frontend tests. No key, no spend
+make test        # 279 backend + 22 frontend tests. No key, no spend
 make eval        # 100-case eval suite + the ≥95% auto-precision gate
 make seed        # regenerate examples/ and evals/cases.jsonl from fixed seeds
 make lint        # ruff check + format
@@ -145,7 +145,7 @@ make test-live      # tests marked `live` (none are required for the product to 
 | Mermaid diagrams | All 4 blocks parsed with the real mermaid parser |
 | **Docker** | Image builds; container serves `/api/health` + the SPA, and an upload+run inside it produced **identical numbers** to the native run (75.8% auto, 40.8% memory, $0.013206). `docker compose config` valid |
 
-**279 tests** (257 backend, 22 frontend). ruff, ruff-format, mypy and tsc all clean.
+**301 tests** (279 backend, 22 frontend). ruff, ruff-format, mypy and tsc all clean.
 
 ### Measured results
 
