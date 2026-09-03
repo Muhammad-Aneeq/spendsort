@@ -169,3 +169,75 @@ for. Hashes: `month_01 d50e0ab7…`, `month_02 5d9d4add…`, `ambiguous 6dfe9ae3
   none of them. Documented, not silent.
 
 **Next:** P3 · data model, CoA loader, vendor normalization, CSV intake.
+
+---
+
+## P3 · Data model, CoA, normalization, intake — DONE (2026-09-03)
+
+Re-read spec 11 §6, §4 F1, §11 and §14 first.
+
+**Done**
+- **ORM** exactly to spec 11 §6, plus two load-bearing additions: `categorizations.run_id`
+  (the dashboard must chart auto-rate, memory-hit rate and cost *across* runs, which is
+  impossible if a decision does not know its run) and run-level cost/cap audit fields, so the
+  $0.25 cap can be *shown* to have been enforced. Status enums are `StrEnum` with matching DB
+  `CHECK` constraints, so an invalid status cannot be written even by a direct SQL mistake.
+- **CoA loader** (`app/coa.py`) with the spec 11 §8 gate in code. `str()` coercion on codes
+  matters more than it looks: YAML reads a bare `6000` as an int, and an int in the lookup
+  table would mean no string answer from a model ever matches — every row would queue forever.
+- **Normalization** (`app/normalize.py`) — the headline risk of spec 11 §14.
+- **CSV intake** (`app/services/ingest.py`) with the governing rule that **one bad row must
+  not lose the other 119**: rows are parsed independently and the caller gets a per-row account
+  of what was rejected and why.
+- Routers: `POST /api/ingest/csv`, `GET/PUT /api/coa`, `GET /api/coa/yaml`. Tests redirect the
+  database to a temp file *before* app import, so the suite can never write the dev DB.
+
+**Normalization: measured, then fixed, then measured again.** I probed the normalizer against a
+2 000-row nightmare-profile sample rather than trusting hand-written strings, and the probe
+found four real defects:
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | 29 distinct keys for Cloudflare alone — references were **glued onto vendor names** (`CLOUDFLARE0FDLSX`) | Fixed in **ledgerfab**: real bank feeds put a separator before a reference. This was a realism bug in the generator, not a normalizer weakness |
+| 2 | `GOOGLE *ADS` and `GOOGLE *CLOUD` both collapsed to `GOOGLE` — a **collision across two different accounts** (6000 vs 6190) | Stop treating everything after `*` as a reference. In real descriptors `*` introduces the meaningful part as often as the noise |
+| 3 | Non-idempotent: `E-ZPASS NY 7Z5544` → `EZPASS NY` → `EZPASS` | The location-tail strip ran before reference removal. Reordered; memory keys must settle in one pass or yesterday's learning stops matching |
+| 4 | `SAN FRANCISCO CA` left a stray `SAN`; `CON ED OF NY` eroded to `CON` | Strip location tails as city+state **pairs**, require the city slot to look like a city (≥4 letters) |
+
+Result: **mean 2.38 keys per vendor (was 14.90), worst 4 (was 46), zero collisions, fully
+idempotent.** Month-over-month key overlap — the real ceiling on the memory-hit rate — rose
+from 53.3% to **68.3%**. Note this is the honest number: P2's 93.3% was *counterparty* overlap,
+while memory keys on `vendor_norm`, so 68.3% is what the dashboard can actually reach.
+
+**A line I deliberately did not cross.** The normalizer expands bank shorthand to a brand
+(`AMZN`→`AMAZON`, `MSFT`→`MICROSOFT`) — ordinary descriptor cleanup. It contains **no**
+vendor→account mapping, so it cannot leak the answer the LLM or the human exists to give. A
+lookup table that also knew accounts would make the whole agent a sham.
+
+**A plan correction.** PLAN.md originally promised a test that "aliases of one counterparty
+collapse to one `vendor_norm`". They don't, and asserting it would have been false: `HISCOX INS`
+and `HISCOX PREMIUM` are different descriptor families. The tests assert the properties that
+actually matter instead — purity, idempotence, collapse — and the module docstring states the
+limitation rather than hiding it. Memory simply learns both keys.
+
+**Verified**
+| Check | Result |
+|---|---|
+| `pytest` | **154 passed**, 1 skipped |
+| normalization purity / idempotence | zero collisions, zero drift over 2 000 chaotic rows |
+| all three shipped example CSVs | import with **zero** rejected rows |
+| CoA ↔ ledgerfab alignment | asserted, so drift fails CI |
+| em-dash account names | survive the round trip (the cp1252 trap from D15) |
+| date-format chaos | 10 formats parsed, incl. the slash-vs-hyphen convention |
+| amount formats | thousands separators, `$`, accounting negatives `(123.45)`, European `1.234,56` |
+| hardening | oversize, empty, BOM, NUL bytes, cp1252, 5 000-char descriptor, missing columns, semicolon delimiter |
+| ruff / ruff format / mypy | clean (22 source files) |
+
+**Two more bugs the tests caught:** `parse_currency` truncated to three characters *before*
+validating, so `"dollars"` became a confident-looking `"DOL"`; and `&` was treated as a
+mergeable initial, turning `HARBOR & VANCE` into `HARBOR &VANCE`.
+
+**Deliberate choice on CSV formula injection.** The raw descriptor is stored **verbatim** — it
+is the audit record. Neutralising `=cmd|...` happens on **export** (P6), which is where a
+spreadsheet would actually evaluate it. Asserted in both directions so the intent is explicit.
+
+**Next:** P4 · the categorization graph — exactly 4 nodes, memory bypass, cost cap.

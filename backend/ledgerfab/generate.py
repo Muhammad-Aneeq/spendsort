@@ -50,8 +50,18 @@ def _seed_int(profile_name: str, seed: int) -> int:
 
 
 def _ref(rng: random.Random, length: int = 6) -> str:
-    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789"
-    return "".join(rng.choice(alphabet) for _ in range(length))
+    """A bank reference blob.
+
+    Guaranteed to contain at least two digits, because real card references effectively always
+    do. That is not a convenience for our normalizer — it is what makes "this token is a
+    reference, not a brand" an honest inference downstream instead of a lucky guess.
+    """
+    letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    digits = "0123456789"
+    chars = [rng.choice(digits), rng.choice(digits)]
+    chars += [rng.choice(letters + digits) for _ in range(length - 2)]
+    rng.shuffle(chars)
+    return "".join(chars)
 
 
 def _descriptor(rng: random.Random, cp: Counterparty, alias_rate: float) -> str:

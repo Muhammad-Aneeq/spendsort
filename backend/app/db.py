@@ -38,8 +38,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 def init_db() -> None:
     """Create tables. SQLite dev convenience — a real deployment would use migrations."""
     # Imported for the side effect of registering mappers on Base.metadata.
-    # app.models lands in P3; the ignore goes away with it.
-    from app import models  # type: ignore[attr-defined]  # noqa: F401
+    from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
 

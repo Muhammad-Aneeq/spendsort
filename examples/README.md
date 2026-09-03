@@ -18,6 +18,6 @@ Each world is hash-verifiable (spec 00 A3). Current content hashes:
 
 | file | sha256 (world) |
 |---|---|
-| `month_01_realistic_seed42.csv` | `d50e0ab7519253abdb0da10c00cb7d54…` |
-| `month_02_realistic_seed43.csv` | `5d9d4adda069e07211851a31029442a8…` |
-| `ambiguous_edge_cases.csv` | `6dfe9ae342465019371526f6abd0ca85…` |
+| `month_01_realistic_seed42.csv` | `ea326e6134eba239445d84ca6c53a02b…` |
+| `month_02_realistic_seed43.csv` | `477b77da95213d78c281d3791316967e…` |
+| `ambiguous_edge_cases.csv` | `15f2e6a6918dda6c6e5a156fed097a08…` |

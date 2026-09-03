@@ -15,7 +15,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.db import init_db
 from app.logging import configure_logging, get_logger
+from app.routers import coa as coa_router
+from app.routers import ingest as ingest_router
 from app.settings import REPO_ROOT, get_settings
 
 settings = get_settings()
@@ -25,6 +28,7 @@ log = get_logger("spendsort.app")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    init_db()
     log.info(
         "startup",
         extra={
@@ -61,6 +65,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(ingest_router.router)
+app.include_router(coa_router.router)
 
 
 @app.get("/api/health", tags=["meta"])

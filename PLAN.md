@@ -183,11 +183,18 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 **Test plan:** `test_ledgerfab_determinism.py` — same seed+profile twice ⇒ identical content hash; different seed ⇒ different hash; every emitted transaction's ground-truth account is a member of the CoA.
 **Risk:** scope creep into invoices/POs/GL that SpendSort never reads. Mitigation: build only the transaction + counterparty-alias + ground-truth surface SpendSort needs; leave the rest documented as out of scope in DECISIONS LOG D3.
 
-### P3 · Data model, CoA, intake — W1
-- [ ] ORM tables exactly per spec 11 §6: `transactions`, `categorizations`, `verdicts`, `vendor_memory`, `runs`
-- [ ] `coa_default.yaml` + loader + **in-code** membership validation
-- [ ] Aggressive vendor normalization (case, punctuation, store numbers, city/state tails, payment-processor prefixes)
-- [ ] `POST /api/ingest/csv` with CSV hardening; `GET/PUT /api/coa`
+### P3 · Data model, CoA, intake — W1 ✅ DONE
+- [x] ORM tables exactly per spec 11 §6: `transactions`, `categorizations`, `verdicts`, `vendor_memory`, `runs` (+ `categorizations.run_id`, needed for the cross-run memory-bend chart, and run-level audit of the cost cap)
+- [x] `coa_default.yaml` + loader + **in-code** membership validation, fail-closed on every hallucination shape
+- [x] Aggressive vendor normalization (case, punctuation, processor prefixes, references, store numbers, domains, city/state tails, legal suffixes, bank shorthand)
+- [x] `POST /api/ingest/csv` with CSV hardening; `GET/PUT /api/coa` + `GET /api/coa/yaml`
+
+**Acceptance (spec 11 §4 F1):** *"CSV upload (date, amount, vendor/description, currency) … chart of accounts as editable YAML (ship a sensible default CoA)."* Plus spec 11 §11: *"CSV hardening."*
+**Test plan:** `test_normalize.py` over ledgerfab alias chaos (asserting aliases of one counterparty collapse to one `vendor_norm`); `test_coa_validation.py`; `test_ingest_csv.py` covering formula-injection cells, BOM, mixed date formats, negative/blank amounts, oversized upload.
+**Verified:** 154 tests pass; ruff, ruff format, mypy all clean. Normalization measured on a 2 000-row nightmare-profile sample: **zero key collisions**, **fully idempotent**, mean **2.38** keys per vendor (worst 4) — down from 14.90 / 46 in the first draft. All three shipped example CSVs import with **zero rejected rows**. CoA↔ledgerfab alignment asserted, so drift fails CI.
+**Plan correction:** the original test plan said aliases of one counterparty collapse to *one* `vendor_norm`. They do not, and asserting it would have been false. `HISCOX INS` and `HISCOX PREMIUM` are genuinely different descriptor families. The tests instead assert the three properties that actually matter — **purity** (no key shared by two vendors, the only failure that would teach memory a wrong account), **idempotence**, and **collapse** to few keys — and the module documents the limit rather than hiding it.
+**Bugs the tests caught:** `parse_currency` truncated to three characters *before* validating, so `"dollars"` became a confident-looking `"DOL"`; and `&` was treated as a mergeable initial, turning `HARBOR & VANCE` into `HARBOR &VANCE`.
+**Risk (spec 11 §14):** *"Vendor normalization quality (messy descriptors) → normalize aggressively, test on ledgerfab alias chaos."* Mitigation: the normalizer is tested directly against generated alias sets, not hand-written strings. *Outcome: the probe found four real defects — two of them in ledgerfab's own realism (references glued onto vendor names, which real feeds do not do) — see PROGRESS.md.*
 
 **Acceptance (spec 11 §4 F1):** *"CSV upload (date, amount, vendor/description, currency) … chart of accounts as editable YAML (ship a sensible default CoA)."* Plus spec 11 §11: *"CSV hardening."*
 **Test plan:** `test_normalize.py` over ledgerfab alias chaos (asserting aliases of one counterparty collapse to one `vendor_norm`); `test_coa_validation.py`; `test_ingest_csv.py` covering formula-injection cells, BOM, mixed date formats, negative/blank amounts, oversized upload.
