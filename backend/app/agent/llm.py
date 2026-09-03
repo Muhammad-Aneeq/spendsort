@@ -158,9 +158,29 @@ class OpenAICategorizer:
 
 
 # --- the mock ----------------------------------------------------------------
+#
+# CALIBRATION NOTE — read before editing anything below.
+#
+# The first version of this mock scored 100% accuracy on the eval set, which made the >=95%
+# auto-precision gate pass vacuously: queue-recall was computed from 0/0 wrong answers and the
+# CoA gate was never exercised. The cause was structural, not a tuning slip — the rule table
+# had been written *from the same vendor catalogue that generates the data*, so it was a lookup
+# table, not a model.
+#
+# So this mock is now deliberately fallible in the three ways a real model fails:
+#   1. `_MOCK_UNKNOWN`  — vendors it simply does not recognise -> low confidence -> queued.
+#   2. `_MOCK_CONFUSED` — plausible confusions between adjacent accounts, stated confidently.
+#      These are the auto-precision failures, and they are what stops the gate being decoration.
+#   3. `_MOCK_OUT_OF_COA` — a confident, well-formed, non-existent account code.
+#
+# The confused/hallucinating vendors are all LOW-FREQUENCY (non-recurring) entries. That is
+# deliberate: memory promotion amplifies a confident error across every later occurrence of the
+# same vendor, so picking a recurring vendor would swamp the metric rather than probe it.
+#
+# ⚠️ None of this measures a real model. A mock-mode auto-precision figure measures the
+# HARNESS. The real number comes from `make eval-live` (BLOCKERS.md B3).
 
-# Vendor-key substring -> account code. Covers the ledgerfab catalogue well but not perfectly,
-# which is the intent: this stands in for a competent-but-fallible model.
+# Vendor-key substring -> account code.
 _MOCK_RULES: tuple[tuple[str, str], ...] = (
     ("GOOGLE ADS", "6000"),
     ("META", "6000"),
@@ -228,17 +248,46 @@ _MOCK_RULES: tuple[tuple[str, str], ...] = (
     ("CLOUDFLARE", "6190"),
 )
 
-# Vendors the mock is genuinely unsure about — it still answers, but below any sane threshold,
-# so the row is queued. This is what makes queue-recall a real measurement.
+# (1) Vendors the mock is genuinely unsure about — it answers, but below any sane threshold,
+# so the row is queued. Ambiguity handled well.
 _MOCK_UNSURE: frozenset[str] = frozenset(
     {"AMAZON", "UBER", "AIRBNB", "BEST BUY", "BESTBUY", "COSTCO", "APPLE", "UDEMY", "AMTRAK", "UPWORK"}
 )
 
-# Deliberate defects, so the gate can fail (PLAN.md D8):
-#   * one confidently WRONG answer  -> auto-precision cannot be 100%
-#   * one OUT-OF-CoA code           -> exercises the spec 11 section 8 gate
-_MOCK_CONFIDENTLY_WRONG: dict[str, str] = {"BLUE BOTTLE COFFEE": "6060", "BLUE BOTTLE": "6060"}
-_MOCK_OUT_OF_COA: frozenset[str] = frozenset({"FIRST NORTHWEST BANK"})
+# (2) Vendors it does not recognise at all. Real models draw a blank on regional suppliers and
+# obscure descriptors; these must end up queued, not guessed.
+_MOCK_UNKNOWN: frozenset[str] = frozenset(
+    {"ACME HVAC", "ACME HEATING & AIR", "BRIGHTLINE CLEANING", "BRIGHTLINE CLEAN", "PUBLICSTORAGE"}
+)
+
+# (3) Plausible confusions between adjacent accounts, asserted confidently. THESE are the
+# auto-precision failures — the reason the gate is a real measurement rather than decoration.
+# Each is a mistake a careful human could also make:
+_MOCK_CONFUSED: dict[str, str] = {
+    # Coffee bought for the office: Meals (6050) or Office Supplies (6060)?
+    "BLUE BOTTLE": "6060",
+    "BLUE BOTTLE COFFEE": "6060",
+    # FedEx Office sells stationery as well as shipping: Postage (6070) or Supplies (6060)?
+    "FEDEX OFFICE": "6060",
+    # Fuel for a trip: Fuel & Vehicle (6180) or Travel — Ground Transport (6150)?
+    "SHELL OIL": "6150",
+    # A payroll *platform* fee: Contractor & Payroll (6170) or Dues & Subscriptions (6030)?
+    # Gusto is SaaS that does payroll, so this is a genuinely easy mistake.
+    "GUSTO": "6030",
+    # Coffee run booked as supplies: Meals (6050) or Office Supplies (6060)?
+    # Needle is the specific descriptor family, so other Starbucks spellings stay correct.
+    "STARBUCKS STORE": "6060",
+    # A municipal water bill: Utilities (6160) or Repairs & Maintenance (6100)?
+    "CITY WATER DEPT": "6100",
+}
+
+# (4) A confident, well-formed, non-existent account code — the shape of a real hallucination.
+# 6085 looks like it belongs beside 6080 Professional Fees. It does not exist.
+_MOCK_OUT_OF_COA: dict[str, str] = {
+    "HARBOR & VANCE": "6085",
+    "HARBORVANCE RETAINER": "6085",
+    "FIRST NORTHWEST BANK": "9999",
+}
 
 
 class MockCategorizer:
@@ -262,15 +311,24 @@ class MockCategorizer:
     ) -> LlmResult:
         key = vendor_norm.upper()
 
-        if key in _MOCK_OUT_OF_COA:
-            # A hallucinated account code, stated with confidence. The CoA gate must catch
-            # this in code — the model's own confidence is no defence.
-            return self._result("9999", 0.94, f"mock: hallucinated code for {key[:24]}")
+        # The special tables are matched by substring, longest needle first, so that a
+        # specific descriptor family can misbehave while the vendor's other spellings stay
+        # correct — "FEDEX OFFICE" is confused with supplies, plain "FEDEX" is not. That
+        # partial-vendor failure is much closer to how real models go wrong.
+        hallucinated = self._find(key, _MOCK_OUT_OF_COA)
+        if hallucinated is not None:
+            # A confident, well-formed, non-existent code. The CoA gate must catch this in
+            # code — the model's own confidence is no defence.
+            return self._result(hallucinated, 0.94, f"mock: hallucinated code for {key[:24]}")
 
-        if key in _MOCK_CONFIDENTLY_WRONG:
-            return self._result(_MOCK_CONFIDENTLY_WRONG[key], 0.93, f"mock: confidently wrong on {key[:20]}")
+        confused = self._find(key, _MOCK_CONFUSED)
+        if confused is not None:
+            return self._result(confused, 0.92, f"mock: plausible confusion on {key[:20]}")
 
-        code = self._match(key)
+        if self._find(key, {n: n for n in _MOCK_UNKNOWN}) is not None:
+            return self._result("", 0.08, f"mock: does not recognise {key[:24]}")
+
+        code = self._find(key, dict(_MOCK_RULES))
         if code is None:
             return self._result("", 0.10, "mock: descriptor not recognised")
 
@@ -280,11 +338,11 @@ class MockCategorizer:
 
     # --- helpers -------------------------------------------------------
     @staticmethod
-    def _match(key: str) -> str | None:
-        # Longest rule first, so "AMAZON WEB SERVICES" beats "AMAZON".
-        for needle, code in sorted(_MOCK_RULES, key=lambda r: -len(r[0])):
+    def _find(key: str, table: dict[str, str]) -> str | None:
+        """Longest needle first, so "AMAZON WEB SERVICES" beats "AMAZON"."""
+        for needle in sorted(table, key=len, reverse=True):
             if needle in key:
-                return code
+                return table[needle]
         return None
 
     @staticmethod

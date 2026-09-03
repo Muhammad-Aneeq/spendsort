@@ -34,3 +34,7 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Eval output (regenerate with make eval)
+evals/report.json
+evals/report_live.json
