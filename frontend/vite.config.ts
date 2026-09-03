@@ -22,4 +22,12 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
   },
+  test: {
+    // These render tests substitute for the visual walkthrough this environment cannot do
+    // (BLOCKERS.md B7). They catch a screen that throws on mount; they cannot judge layout.
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+  },
 });

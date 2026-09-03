@@ -12,9 +12,11 @@ htmlcov/
 
 # SpendSort local state
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
-backend/spendsort.db
+backend/spendsort.db*
 backend/.spendsort/
 
 # Env / secrets — never commit a key

@@ -209,14 +209,14 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 - [x] `llm-confirmed` promotion: an auto-applied, CoA-valid LLM answer enters memory. **This is the mechanism behind the bend** — if only human overrides were remembered, memory would stay nearly empty and "gets cheaper every month" would be theatre
 
 **Verified:** 213 tests pass; ruff, format, mypy clean. The graph has exactly 4 nodes with the bypass as an edge. The bypass is proven with an `ExplodingCategorizer` that raises if called at all — asserting `source == "memory"` would still have passed if the LLM had been called and its answer discarded, i.e. if money had been spent. Threshold tested at 0.8499 / 0.85 / 0.86, inclusive as the spec's "≥" requires. Out-of-CoA codes queue at **every** confidence, including 0.99.
-**Measured end to end on the shipped example files, mock mode:**
+**Measured end to end on the shipped example files, mock mode.** *(Figures below are the P8 re-measurement. P4's original numbers — 78.3%/41.7%/$0.01302 and 85.0%/65.0%/$0.00781 — were taken before P5 deliberately made the mock fallible, which changed them. The current numbers are the ones quoted everywhere else.)*
 
 | run | txns | auto-rate | memory-hit | LLM calls | cost |
 |---|---|---|---|---|---|
-| month 1 | 120 | 78.3% | 41.7% | 70 | $0.01302 |
-| month 2 | 120 | 85.0% | **65.0%** | 42 | **$0.00781** |
+| month 1 | 120 | 75.8% | 40.8% | 71 | $0.013206 |
+| month 2 | 120 | 81.7% | **62.5%** | 45 | **$0.008370** |
 
-**The bend is real: 40.0% cheaper per run, LLM calls 70 → 42, memory-hit rate up 23 points.** 68 mappings learned, 6 out-of-CoA hallucinations correctly queued, 0 transactions lost.
+**The bend is real: 36.6% cheaper per run, LLM calls 71 → 45, memory-hit rate up 21.7 points.** Out-of-CoA hallucinations correctly queued; 0 transactions lost.
 
 **Acceptance (spec 11 §4 F2):** *"Categorization graph (LangGraph, ≤4 nodes): `normalize_vendor → check_memory (learned mappings first, zero LLM cost) → llm_categorize (structured output: {account_code, confidence, reason}) → route (auto ≥ threshold | queue)`."* Spec 11 §8: *"account_code must be in the CoA (validated in code; out-of-CoA = forced low confidence + queue). Reason ≤ 20 words. Temperature 0.1."* Spec 11 §4 F4: *"memory hits bypass the LLM entirely."* Spec 11 §11: *"cost cap per run (default $0.25)."*
 **Test plan:** `test_graph_shape.py` asserts the compiled graph has exactly 4 nodes; `test_graph_memory_bypass.py` injects a FakeLLM that **fails the test if invoked** on a memory hit; `test_routing_threshold.py` boundary cases at, just below, and just above threshold; `test_coa_validation.py` hallucinated account code ⇒ queued; `test_memory_learning.py` override → re-run ⇒ auto + `source` learned-from-human; `test_cost_cap.py` cap reached mid-run ⇒ remainder queued and run row records the truncation.
@@ -284,23 +284,43 @@ suite is for. **Default stays at 0.85** (D10 confirmed by measurement, not assum
 **Test plan:** `test_api_smoke.py` exercises all eight endpoints; queue ordering asserted; `test_export.py` asserts the four required per-line fields.
 **Risk:** metrics shaped for one screen, then reshaped for charts. Mitigation: design the metrics response from the P8 chart requirements first, then build the endpoint to it.
 
-### P7 · Aurora components + frontend screens — W2
-- [ ] `components/aurora/`: `Card` (frosted), `ConfidencePill` (0-1 → colour + label), `MetricTile`, `SyntheticDataBanner` — spec 00 A2 tokens
-- [ ] Screens 1–4: Import + CoA editor · Run view · Review Queue · Memory
-- [ ] Queue: one-click accept, override account picker, **keyboard flow**
-- [ ] Typed API client; TanStack Query for fetch/invalidate
+### P7 · Aurora components + frontend screens — W2 ✅ DONE
+- [x] `components/aurora/`: `Card` (frosted), `ConfidencePill` (0-1 → colour + label), `MetricTile`, `SyntheticDataBanner`, plus `EmptyState` and `Button` — spec 00 A2 tokens
+- [x] Screens 1–4: Import + CoA editor · Run view · Review Queue · Memory
+- [x] Queue: one-click accept, override account picker, **keyboard flow** (`j`/`k` move, `a` accept, `o` override, `Esc` cancel)
+- [x] Typed API client; TanStack Query for fetch/invalidate
+- [x] **22 render tests** across all five screens (vitest + jsdom), wired into CI — substituting for the visual walkthrough this environment cannot do (B7)
+
+**Acceptance (spec 11 §9):** *"(3) Review Queue (row: vendor, amount, suggested account, ConfidencePill, reason; one-click accept; override picker; keyboard flow)."* Spec 00 A2 tokens: *"dark navy #0B1E3B, emerald #10B981, frosted-glass surfaces, Space Grotesk / Inter."*
+**Test plan:** manual walkthrough against a real backend, driven end to end; `tsc --noEmit` clean; every screen renders both empty and populated states; accept and override both round-trip and disappear from the queue.
+**Verified:** `tsc --noEmit` clean · `npm run build` clean · **22/22 render tests pass**, covering every screen in both empty and populated states, the row contract of §9, the disabled accept on an invalid account, and the em-dash account name surviving to the DOM. The API was separately driven end to end over HTTP: 11 routes registered, both example months uploaded and run, the Vite proxy verified with `curl`.
+**⚠️ NOT verified — the manual walkthrough did not happen.** The Chrome extension is not connected (BLOCKERS.md **B7**), so **no one has looked at these screens**. Layout, label collisions and chart overflow are unconfirmed, and the browser keyboard flow is untested against real key events. Recorded as a gap rather than quietly dropped from the plan.
+**Risk:** UI polish consuming the phase. Mitigation: the queue row and the memory-bend chart are the only two surfaces that get design attention; everything else is functional-plain. *Outcome: held.*
 
 **Acceptance (spec 11 §9):** *"(3) Review Queue (row: vendor, amount, suggested account, ConfidencePill, reason; one-click accept; override picker; keyboard flow)."* Spec 00 A2 tokens: *"dark navy #0B1E3B, emerald #10B981, frosted-glass surfaces, Space Grotesk / Inter."*
 **Test plan:** manual walkthrough against a real backend, driven end to end; `tsc --noEmit` clean; every screen renders both empty and populated states; accept and override both round-trip and disappear from the queue.
 **Risk:** UI polish consuming the phase. Mitigation: the queue row and the memory-bend chart are the only two surfaces that get design attention; everything else is functional-plain.
 
-### P8 · Dashboard, memory-bend, export — W2
-- [ ] Confidence histogram
-- [ ] Auto-rate %, memory-hit rate, cost-per-run tiles
-- [ ] **Memory-bend chart**: memory-hit rate ↑ and cost-per-run ↓ across runs (Recharts)
-- [ ] Category breakdown
-- [ ] Export CSV download from the UI
-- [ ] Two-run demo seed path so the bend is visible on a fresh clone
+### P8 · Dashboard, memory-bend, export — W2 ✅ DONE
+- [x] Confidence histogram, with the gate drawn as a reference line and each bar coloured by which side it fell on
+- [x] Auto-rate %, memory-hit rate, cost-per-run tiles, with run-over-run deltas
+- [x] **Memory-bend chart**: memory-hit rate ↑ and cost-per-transaction ↓ across runs (Recharts) — as **two small multiples, not a dual-axis plot** (D17)
+- [x] Category breakdown
+- [x] Export CSV download from the UI
+- [x] Two-run demo path verified end to end over HTTP
+- [x] Chart palette **computationally validated**, not eyeballed
+- [x] A "Show numbers" table view on every chart, so a tooltip is never the only way to read a value
+
+**Acceptance (spec 11 §4 F5):** *"Dashboard: confidence histogram, auto-rate %, memory-hit rate, cost-per-run, category breakdown."* Spec 11 §4 F4: *"the cost curve VISIBLY bends month over month (chart it)."* Spec 11 §4 F6: *"categorized CSV with per-line {account, confidence, source, reason}."*
+**Verified — the real two-month run, over HTTP:**
+
+| run | txns | auto-rate | memory-hit | LLM calls | cost |
+|---|---|---|---|---|---|
+| month 1 | 120 | 75.8% | 40.8% | 71 | $0.013206 |
+| month 2 | 120 | 81.7% | **62.5%** | 45 | **$0.008370** |
+
+**36.6% cheaper per run, LLM calls 71 → 45, memory-hit rate +21.7 points.** The backend assertion `test_the_run_series_shows_the_memory_bend` locks this in, and the frontend test asserts the bend is stated in words on screen as well as drawn.
+**Risk:** the bend fails to appear because month 2 shares too few vendors with month 1. Mitigation: `month_02` is generated from the **same counterparty catalogue** by construction; the two-run assertion is a real test, not a demo hope. I will use the `dataviz` skill before writing chart code. *Outcome: skill loaded before the first line of chart code, and it changed the design — see D17. The bend appeared as predicted (P3 measured the key-overlap ceiling at 68.3%; month 2 reached 62.5%).*
 
 **Acceptance (spec 11 §4 F5):** *"Dashboard: confidence histogram, auto-rate %, memory-hit rate, cost-per-run, category breakdown."* Spec 11 §4 F4: *"the cost curve VISIBLY bends month over month (chart it)."* Spec 11 §4 F6: *"categorized CSV with per-line {account, confidence, source, reason}."*
 **Test plan:** run `month_01` then `month_02`, assert the API series shows memory-hit rate strictly increasing and cost-per-run strictly decreasing between run 1 and run 2; verify the exported CSV opens cleanly and carries all four fields.
@@ -354,6 +374,9 @@ suite is for. **Default stays at 0.85** (D10 confirmed by measurement, not assum
 | D11 | **One `pyproject.toml` at the repo root**, not `backend/pyproject.toml` as first mapped | Spec 00 A1 puts `evals/` at the top level, and the eval harness must import both `app` and `ledgerfab`. A single root project gives one venv and one `uv run pytest` that covers `backend/tests` *and* `evals`, instead of a second install step or path hacks. Declared `package = false` (this is a monorepo, not a distributable); imports resolve via pytest `pythonpath` and uvicorn `--app-dir backend`. |
 | D12 | **Tailwind v4** (`@tailwindcss/vite`), so no `tailwind.config.js` / `postcss.config.js` | v4 is the current line and is CSS-first: the aurora tokens of spec 00 A2 live in a real `@theme` block in `components/aurora/tokens.css`, which is a better home for a design system than a JS config object. The two config files in the original file map are therefore not needed and were dropped. |
 | D13 | API port is an override (`PORT` / `-Port` / `VITE_API_PORT`), not a hardcoded 8000 | Port 8000 is occupied by Docker/WSL on the dev box (BLOCKERS.md B6). A demo that only works when one specific port is free is a demo that breaks on someone else's laptop. |
+| D17 | **The memory bend is two small-multiple charts, not one dual-axis plot** | Memory-hit rate (%) and cost per run ($) are different scales, and putting them on one plot with two y-axes would place the "lines crossing" moment wherever the axis alignment happened to fall — a drawing artefact presented as a finding. The `dataviz` skill names this the single most common charting mistake. Two panels on a shared x-axis (run number) make the same point without inventing one. |
+| D18 | **Chart colours validated by script, not by eye** | Ran the palette validator against the dark navy chart surface. The UI's bright `#10B981` / `#F59E0B` **fail** the dark-mode lightness band (L 0.696 / 0.769 against a 0.48–0.67 band), so the charts use the dimmer steps of the same hues — `#0E9A6C` / `#D97706` — which pass all six checks (CVD ΔE 8.3, normal-vision 23.4, contrast ≥3:1). Recorded in `charts/tokens.ts` with the command, so the next person re-runs it instead of guessing. |
+| D19 | **Frontend render tests instead of a manual walkthrough** | No browser is available (B7), so "look at it" is impossible. 22 vitest+jsdom tests assert every screen mounts and shows the product's claims. They cannot judge layout, and that gap is stated in README STATUS rather than glossed. |
 | D15 | **Every file read/write passes `encoding="utf-8"` explicitly; CSV export uses `utf-8-sig`** | Measured, not assumed: three CoA account names contain an em-dash (`Travel — Airfare`), and this box's locale default is `cp1252`, which silently renders them `Travel â€” Airfare`. Any reader that omits the encoding corrupts the chart of accounts. The BOM on export is what makes Excel open an exported ledger correctly — which matters, since a bookkeeper is the user. Asserted by test rather than left to convention. |
 | D16 | Keep the em-dash in account names rather than downgrading to a hyphen | Sidestepping the character would hide the encoding bug instead of fixing it, and the CSV hardening that spec 11 §11 asks for has to survive real-world text anyway. |
 | D14 | Accept the **1.x** LangGraph / langchain-openai line that uv resolved | `langgraph 1.2.11`, `langchain-core 1.6.1`, `langchain-openai 1.6.0` — newer than the `>=0.2` floors written for the spec era. The APIs used (`StateGraph`, `add_conditional_edges`, `with_structured_output`) are stable across the bump, and `uv.lock` is committed so the resolution is reproducible. |

@@ -28,8 +28,9 @@ dev-api: ## Run the FastAPI backend with reload
 dev-web: ## Run the Vite dev server
 	cd frontend && npm run dev
 
-test: ## Run the default test suite (LLM mocked; no spend, no key needed)
+test: ## Run the default test suite (backend + frontend; LLM mocked, no spend, no key)
 	uv run pytest -q -m "not live"
+	cd frontend && npm test
 
 test-live: ## Run tests that hit the real OpenAI API (needs OPENAI_API_KEY; costs money)
 	uv run pytest -q -m live
@@ -44,7 +45,7 @@ seed: ## Regenerate examples/ and evals/cases.jsonl from fixed ledgerfab seeds
 	PYTHONPATH=backend uv run python -m ledgerfab.export
 	@test -f evals/build_cases.py \
 		&& PYTHONPATH=backend uv run python evals/build_cases.py \
-		|| echo "skip: evals/build_cases.py lands in P5 (see PLAN.md)"
+		|| echo "skip: evals/build_cases.py not found"
 
 lint: ## ruff check
 	uv run ruff check backend evals

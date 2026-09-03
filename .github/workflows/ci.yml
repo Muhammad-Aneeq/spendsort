@@ -76,7 +76,7 @@ jobs:
           if-no-files-found: ignore
 
   frontend:
-    name: typecheck · build
+    name: typecheck · test · build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,6 +90,13 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
+
+      # Render tests for all five screens. They stand in for the visual walkthrough that the
+      # build environment cannot perform (BLOCKERS.md B7): they catch a screen that throws on
+      # mount, but they cannot judge layout.
+      - name: Screen render tests
+        working-directory: frontend
+        run: npm test
 
       - name: Typecheck + build
         working-directory: frontend

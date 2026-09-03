@@ -55,7 +55,7 @@ switch ($Target) {
             @('dev', 'Run API + SPA together (the demo entrypoint; -Port to override 8000)'),
             @('dev-api', 'Run the FastAPI backend with reload'),
             @('dev-web', 'Run the Vite dev server'),
-            @('test', 'Default test suite (LLM mocked; no spend, no key needed)'),
+            @('test', 'Backend + frontend tests (LLM mocked; no spend, no key needed)'),
             @('test-live', 'Tests that hit the real OpenAI API (needs OPENAI_API_KEY)'),
             @('eval', 'Eval suite + auto-precision CI gate, mock mode'),
             @('eval-live', 'Eval suite against the real model (needs OPENAI_API_KEY)'),
@@ -108,7 +108,10 @@ switch ($Target) {
         Push-Location frontend; try { npm run dev } finally { Pop-Location }
     }
 
-    'test' { Invoke-Step 'pytest' { uv run pytest -q -m "not live" } }
+    'test' {
+        Invoke-Step 'pytest' { uv run pytest -q -m "not live" }
+        Invoke-Step 'vitest' { Push-Location frontend; npm test; Pop-Location }
+    }
 
     'test-live' {
         if (-not $env:OPENAI_API_KEY) { throw 'OPENAI_API_KEY is not set (BLOCKERS.md B3).' }
@@ -130,7 +133,7 @@ switch ($Target) {
             Invoke-Step 'build eval cases' { uv run python evals/build_cases.py }
         }
         else {
-            Write-Host 'skip: evals/build_cases.py lands in P5 (see PLAN.md)' -ForegroundColor DarkGray
+            Write-Host 'skip: evals/build_cases.py not found' -ForegroundColor DarkGray
         }
     }
 

@@ -94,6 +94,47 @@ correct regardless (PLAN.md DECISIONS LOG **D6**).
 
 ---
 
+## B7 · No browser available to view the UI — OPEN (workaround active)
+
+**What.** The frontend cannot be *looked at* from this environment. The dataviz method's final
+step is "render it and look at it" — the validator checks colour, not layout, so label
+collisions, geometry and overflow can only be caught by eye. Two deliverables depend on it: the
+visual check itself, and the screenshot that spec 00 A1 puts first in the README.
+
+**Tried.**
+- `mcp__claude-in-chrome__tabs_context_mcp` → *"Browser extension is not connected."*
+- Confirmed the app itself is fine and serving: the API answers on `127.0.0.1:8123` with all 11
+  routes, Vite serves the SPA (HTTP 200, `#root` present), and `/api/health` returns correctly
+  **through the Vite proxy** (`curl http://localhost:5173/api/health` → 200). So this is purely
+  the absence of a viewer, not a broken app.
+- Noted along the way that Vite v6 binds `::1` only, so `localhost:5173` works while
+  `127.0.0.1:5173` does not — and that PowerShell 5.1's `Invoke-RestMethod` times out against
+  the proxy where `curl` succeeds. Both are client quirks, not app faults.
+
+**Needed.** The Claude browser extension connected (or any headed browser) to view
+`http://localhost:5173` and capture a screenshot.
+
+**Workaround (active).** Substitute *automated* rendering for visual inspection, which is
+stronger for correctness even though it cannot judge layout:
+- Added **vitest + jsdom + @testing-library/react** and a render smoke test per screen, driven
+  by stubbed API responses. These catch the failure that matters most — a screen that throws on
+  mount — and they run in CI, which eyeballing never would.
+- The charts' colour decisions were validated computationally instead
+  (`validate_palette.js`, see `frontend/src/components/charts/tokens.ts`).
+
+**What remains genuinely unverified, and is labelled as such in README STATUS:**
+- **Layout**: no human or machine has *seen* these screens. Label collisions, chart overflow and
+  spacing are unconfirmed.
+- **The README screenshot slot is empty on purpose.** No screenshot is claimed that was not
+  produced, and none is faked or borrowed.
+- The keyboard flow in the review queue is unit-reachable but not exercised against a real
+  browser's key events.
+
+**PLAN.md tasks affected.** P7 (manual walkthrough) and P9 (README screenshot) — both proceed
+with the gap stated rather than papered over.
+
+---
+
 ## B6 · Port 8000 is already occupied on this machine — RESOLVED (made configurable)
 
 **What.** The conventional FastAPI dev port 8000 is already bound on this box, so

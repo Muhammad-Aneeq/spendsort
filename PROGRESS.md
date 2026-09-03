@@ -296,6 +296,11 @@ points.** 68 mappings learned, 6 out-of-CoA hallucinations queued by the gate, 0
 lost. Month 1 already shows 41.7% memory hits because promotion works *within* a run too — the
 second Starbucks of the month is free.
 
+> **Superseded in P5.** These figures were measured before P5 deliberately made the mock
+> fallible (it had been an accidental oracle). The current numbers are month 1 75.8% auto /
+> 40.8% memory / $0.013206 and month 2 81.7% / 62.5% / $0.008370 — a 36.6% cost drop. The
+> conclusion is unchanged; the arithmetic moved. Later phases quote the corrected numbers.
+
 **Verified**
 | Check | Result |
 |---|---|
@@ -454,3 +459,86 @@ fresh session, so this was a test artifact, not a bug — fixed with an explicit
 and a comment saying why, rather than by weakening the assertion.
 
 **Next:** P7 · aurora components and the frontend screens.
+
+---
+
+## P7 + P8 · Frontend: aurora components, five screens, the memory bend — DONE (2026-09-03)
+
+Re-read spec 11 §9 and spec 00 A2 first. Taken together because the Run screen needs the
+histogram, so the chart work could not wait for P8.
+
+**Done**
+- **aurora** (`components/aurora/`): `Card`, `ConfidencePill`, `MetricTile`,
+  `SyntheticDataBanner` — the four the brief names — plus `EmptyState` and `Button`, which
+  every screen needed. Tokens stay in the Tailwind v4 `@theme` block from P1.
+- **Five screens** per spec 11 §9, a typed API client, TanStack Query for fetch/invalidate.
+- **Charts**: confidence histogram with the gate as a reference line; the memory bend; an
+  auto-rate trend; a spend breakdown; CSV export.
+- **22 render tests** (vitest + jsdom) across every screen, wired into CI and `make test`.
+
+**`ConfidencePill` is the component that carries the product.** It shows the **number**, not
+just a colour — "high" hides whether it was 0.86 or 0.99 — says which side of the gate the row
+fell on, and never renders green below the threshold. An out-of-CoA answer reads
+"invalid account" rather than "low confidence", because those are different failures and a
+reviewer needs to know which one they are looking at.
+
+**The dataviz skill changed the design, which is why it was loaded first.**
+
+1. **No dual-axis (PLAN D17).** The bend is naturally described as "memory-hit rate up, cost
+   down" — the classic invitation to two y-scales on one plot. That would put the dramatic
+   "lines crossing" moment wherever the axis alignment happened to fall: an artefact of drawing,
+   presented as a finding. It is now **two small multiples** on a shared x-axis. Less
+   theatrical, and it doesn't lie.
+2. **Colours validated by script (PLAN D18).** The UI's bright emerald and amber **fail** the
+   dark-mode lightness band (L 0.696 and 0.769 against 0.48–0.67). The charts use the dimmer
+   steps of the same hues — `#0E9A6C` / `#D97706` — which pass all six checks (CVD ΔE 8.3,
+   normal-vision 23.4, contrast ≥3:1). The exact command is recorded in `charts/tokens.ts` so
+   the next person re-runs it instead of guessing.
+3. **A table view on every chart.** A tooltip must never be the only way to read a value, so
+   each chart has a "Show numbers" toggle.
+4. Solid hairline gridlines (dashing is reserved for the threshold line, which *is* a
+   threshold); 2px lines; 8px markers; 4px rounded bar tops; the endpoint direct-labelled and
+   nothing else; containers sized to include the x-axis band.
+
+**Verified end to end over HTTP** (API on 8123, both example months uploaded and run):
+
+| run | txns | auto-rate | memory-hit | LLM calls | cost |
+|---|---|---|---|---|---|
+| month 1 | 120 | 75.8% | 40.8% | 71 | $0.013206 |
+| month 2 | 120 | 81.7% | **62.5%** | 45 | **$0.008370** |
+
+**36.6% cheaper, calls 71 → 45, memory-hit +21.7 points.** P3 predicted the ceiling at 68.3%
+key overlap; month 2 reached 62.5%, so the design behaved as measured rather than as hoped.
+
+**⚠️ The manual walkthrough did not happen, and that matters.** The Chrome extension is not
+connected (BLOCKERS.md **B7**), so **nobody has looked at these screens**. The dataviz method's
+last step is "render it and look at it" precisely because a validator checks colour, not
+layout. Substituted automated rendering, which is stronger for correctness and weaker for
+appearance:
+- 22 tests assert every screen mounts, in both empty and populated states, and that the
+  product's claims are actually on screen (the gate, the "learned" marker, the bend in words).
+- Still unverified: layout, label collisions, chart overflow, and the browser keyboard flow.
+- **The README screenshot slot stays empty on purpose.** No screenshot is claimed that was not
+  produced.
+
+**Three things that went wrong, all mine**
+1. **A stale server served a stale app for ten minutes.** A uvicorn process left over from my
+   P1 verification still held port 8123, and it only knew `/api/health` — so uploads returned
+   405 and I briefly suspected the routers. The diagnostic that settled it was asking the
+   *running* server for its OpenAPI paths. Lesson applied: kill by verified PID, and check
+   `openapi.json` before debugging routing.
+2. **`Set-Content -Encoding UTF8` writes a BOM on PowerShell 5.1**, which broke
+   `package.json` and made Vite fail to parse the PostCSS config. Swept the whole tree for
+   BOMs, found three files, and rewrote them with `UTF8Encoding($false)`.
+3. Three of my own render tests were wrong rather than the code: two waited on content that
+   renders before the data arrives, and one asserted a single "All data synthetic" when the
+   banner *and* the footer both say it. Fixed the queries, not the UI.
+
+**Honest gaps**
+- Bundle is 703 kB (212 kB gzipped), mostly Recharts. Above Vite's 500 kB advisory; not
+  code-split. Fine for a local dashboard, noted rather than hidden.
+- `.gitignore` was missing the SQLite `-wal`/`-shm` sidecars; added.
+- P4's originally-reported bend numbers were superseded by the P5 mock recalibration; both
+  PLAN.md and the P4 entry above now carry the correction.
+
+**Next:** P9 · README, MODEL_COSTS.md, architecture diagram, and the final report.
