@@ -1,0 +1,30 @@
+# SpendSort — docker-compose (spec 11 section 12: "docker-compose; near-zero cost").
+# Local demo packaging. The API serves the built SPA, so one port is all you need.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      SPENDSORT_ENV: docker
+      SPENDSORT_DATABASE_URL: sqlite:////data/spendsort.db
+      # Leave the key unset to run the whole demo in mock mode at zero cost.
+      SPENDSORT_OPENAI_API_KEY: ${SPENDSORT_OPENAI_API_KEY:-}
+      SPENDSORT_MOCK_LLM: ${SPENDSORT_MOCK_LLM:-0}
+      SPENDSORT_AUTO_THRESHOLD: ${SPENDSORT_AUTO_THRESHOLD:-0.85}
+      SPENDSORT_COST_CAP_USD_PER_RUN: ${SPENDSORT_COST_CAP_USD_PER_RUN:-0.25}
+    volumes:
+      - spendsort-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  spendsort-data:

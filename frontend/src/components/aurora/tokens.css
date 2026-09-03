@@ -1,0 +1,42 @@
+/* aurora-ui design tokens — spec 00 A2.
+ *
+ * "Tokens: dark navy #0B1E3B, emerald #10B981, frosted-glass surfaces,
+ *  Space Grotesk / Inter."
+ *
+ * These are the reason every screenshot across the portfolio is recognizably the same hand.
+ * Tailwind v4 reads @theme and generates the utilities (bg-navy, text-emerald, ...).
+ */
+
+@theme {
+  /* --- core palette ------------------------------------------------- */
+  --color-navy: #0b1e3b;
+  --color-navy-deep: #071528;
+  --color-navy-raised: #12294b;
+  --color-emerald: #10b981;
+  --color-emerald-dim: #0e9a6c;
+  --color-emerald-glow: #34d399;
+
+  /* --- confidence scale (ConfidencePill) ----------------------------- */
+  --color-conf-high: #10b981; /* auto-applied */
+  --color-conf-mid: #f59e0b; /* queued, plausible */
+  --color-conf-low: #f43f5e; /* queued, needs a human */
+
+  /* --- ink ----------------------------------------------------------- */
+  --color-ink: #f8fafc;
+  --color-ink-muted: #94a3b8;
+  --color-ink-faint: #64748b;
+
+  /* --- frosted glass surfaces ---------------------------------------- */
+  --color-glass: rgb(255 255 255 / 0.06);
+  --color-glass-strong: rgb(255 255 255 / 0.1);
+  --color-hairline: rgb(255 255 255 / 0.12);
+
+  /* --- type ---------------------------------------------------------- */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", monospace;
+
+  /* --- elevation ----------------------------------------------------- */
+  --shadow-glass: 0 1px 0 0 rgb(255 255 255 / 0.05) inset, 0 8px 32px -8px rgb(0 0 0 / 0.6);
+  --radius-card: 0.875rem;
+}

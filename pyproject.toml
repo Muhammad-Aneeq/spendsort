@@ -1,0 +1,76 @@
+[project]
+name = "spendsort"
+version = "0.1.0"
+description = "Expense categorization with confidence gates and a learning vendor memory. Finance AI Lab, episode 1."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+dependencies = [
+    # API
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.17",   # CSV upload
+    # Config & validation (Pydantic v2 per spec 00 A1)
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "pyyaml>=6.0",                # editable chart of accounts
+    # Persistence
+    "sqlalchemy>=2.0",
+    # Agent orchestration — LangGraph only, no LangChain-classic chains (spec 00 F)
+    "langgraph>=0.2.45",
+    "langchain-core>=0.3.15",
+    "langchain-openai>=0.2.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "httpx>=0.27",                # FastAPI TestClient
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "types-pyyaml>=6.0",
+]
+
+# The repo is a monorepo, not a distributable package: uv manages the environment
+# but installs nothing for the project itself. Imports resolve via pytest's
+# `pythonpath` below and uvicorn's `--app-dir backend`.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["backend", "."]
+testpaths = ["backend/tests", "evals"]
+addopts = "-ra --strict-markers"
+markers = [
+    # Default test runs mock the LLM (adaptation 3). Anything that spends real
+    # money or needs OPENAI_API_KEY is marked `live` and deselected by default.
+    "live: hits the real OpenAI API — costs money, needs OPENAI_API_KEY (deselected by default)",
+    "eval: the eval suite; auto-precision is the CI gate (spec 11 section 10)",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["backend", "evals"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+    "B008",  # FastAPI Depends() in defaults is the framework idiom
+]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "backend"
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["^\\.venv/"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "evals.*"]
+disallow_untyped_defs = false

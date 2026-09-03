@@ -32,12 +32,15 @@ spendsort/
 ├── README.md                            NEW  pitch → architecture (mermaid) → synthetic banner → quickstart → STATUS
 ├── MODEL_COSTS.md                       NEW  declining-cost story + per-run math
 ├── LICENSE                              NEW  MIT (spec 00 A1)
-├── Makefile                             NEW  dev · test · eval · eval-live · seed · up · down · lint
+├── Makefile                             NEW  install · dev · test · eval · eval-live · seed · lint · typecheck · up · down
 ├── make.ps1                             NEW  PowerShell shim — `make` absent on this box (BLOCKERS.md B2)
+├── pyproject.toml                       NEW  single uv project for the whole repo (D11); pytest markers `live` + `eval`
+├── uv.lock                              NEW  committed for reproducible resolution (D14)
+├── Dockerfile                           NEW  2-stage: build SPA → python runtime serving it (referenced by compose)
 ├── docker-compose.yml                   NEW  spec 11 §12
 ├── .env.example                         NEW  OPENAI_API_KEY, SPENDSORT_MODEL, thresholds, cost cap
 ├── .gitignore                           NEW
-├── .github/workflows/ci.yml             NEW  ruff → mypy → pytest → eval gate (spec 00 A1)
+├── .github/workflows/ci.yml             NEW  ruff → mypy → pytest → eval gate → frontend build (spec 00 A1)
 ├── docs/
 │   ├── spec_00_shared_foundations.md    MOVE from repo root
 │   ├── spec_11_spendsort.md             MOVE from repo root
@@ -48,8 +51,6 @@ spendsort/
 │   ├── ambiguous_edge_cases.csv              two-plausible-account cases (spec 11 §14)
 │   └── README.md                             provenance: profile + seed + regeneration command
 ├── backend/
-│   ├── pyproject.toml                   NEW  uv-managed; pytest markers incl. `live`
-│   ├── uv.lock                          NEW  generated
 │   ├── ledgerfab/                       NEW  reimplemented from spec 00 A3 (seed dir absent — BLOCKERS.md B1)
 │   │   ├── __init__.py                       public API: generate(profile, seed) -> World
 │   │   ├── config.py                         knobs + presets clean | realistic | nightmare
@@ -106,8 +107,8 @@ spendsort/
 │   ├── run_live.py                      NEW  same suite against the real API (`live` marker)
 │   └── README.md                        NEW  what is measured and why each metric exists
 └── frontend/
-    ├── package.json · vite.config.ts · tsconfig.json          NEW
-    ├── tailwind.config.js · postcss.config.js · index.html    NEW
+    ├── package.json · vite.config.ts · tsconfig.json          NEW  Tailwind v4 via plugin — no tailwind/postcss config (D12)
+    ├── index.html                                             NEW  Space Grotesk + Inter
     └── src/
         ├── main.tsx · App.tsx · index.css                     NEW  routing + aurora tokens
         ├── lib/api.ts · lib/types.ts · lib/format.ts          NEW  typed API client
@@ -142,15 +143,22 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 **Test plan:** none (documentation phase); self-check that every non-negotiable constraint in the brief appears as at least one checkbox below.
 **Risk:** a plan that drifts from reality. Mitigation: PLAN.md is re-ticked at the end of every phase, and phases re-read their spec section first.
 
-### P1 · Scaffold & foundations — W1
-- [ ] `git init` (repo is not currently under version control) + `.gitignore`
-- [ ] `MOVE` both specs to `docs/`
-- [ ] `backend/pyproject.toml` via uv: FastAPI, Pydantic v2, SQLAlchemy, langgraph, langchain-openai, pyyaml, pytest; register `live` marker
-- [ ] `frontend/` Vite + React + TS + Tailwind bootstrap
-- [ ] `Makefile` + `make.ps1` shim: `dev test eval eval-live seed lint up down`
-- [ ] `.env.example`, `docker-compose.yml`, MIT `LICENSE`
-- [ ] `.github/workflows/ci.yml`: ruff → mypy → pytest → eval gate
-- [ ] `app/settings.py`, `app/logging.py`, health endpoint
+### P1 · Scaffold & foundations — W1 ✅ DONE
+- [x] `git init` (repo was not under version control) + `.gitignore`
+- [x] `MOVE` both specs to `docs/`
+- [x] `pyproject.toml` via uv: FastAPI, Pydantic v2, SQLAlchemy, langgraph, langchain-openai, pyyaml, pytest; `live` + `eval` markers registered. **At repo root, not `backend/`** — see D11
+- [x] `frontend/` Vite + React 19 + TS + Tailwind **v4** bootstrap (D12); aurora tokens in `components/aurora/tokens.css`
+- [x] `Makefile` + `make.ps1` shim: `install dev dev-api dev-web test test-live eval eval-live seed lint fmt typecheck up down clean`
+- [x] `.env.example`, `docker-compose.yml`, `Dockerfile`, MIT `LICENSE`
+- [x] `.github/workflows/ci.yml`: ruff → mypy → pytest → **eval gate** (separate job) → frontend build
+- [x] `app/settings.py`, `app/logging.py` (structured JSON), `app/db.py`, `GET /api/health`
+- [x] API port made overridable after finding 8000 occupied on this box (D13, BLOCKERS.md B6)
+
+**Acceptance (spec 00 A1):** *"`make up` runs a hello dashboard; `make eval` runs an empty pass; CI green on a fresh clone."* Stack exactly per spec 00 F: *"Python everywhere · FastAPI backends · Vite+React+TS frontends · LangChain + LangGraph for agent orchestration · no LangChain-classic chains (LCEL/LangGraph only)."*
+**Test plan:** `test_api_smoke.py::test_health` green; `make test` and `make eval` both exit 0 on an empty suite; frontend dev server boots and renders a placeholder.
+**Verified:** `pytest` → 2 passed, 1 skipped · `pytest evals` → honest empty pass (skip, cases.jsonl arrives P5) · `ruff check` + `ruff format --check` clean · `mypy backend/app` clean · `npm run build` → `tsc --noEmit` clean + bundle built · uvicorn boots, `/api/health` returns 200 with the trust settings, and the built SPA is served from `/` · all seven aurora token utilities confirmed present in the compiled CSS · `./make.ps1 help|test|eval` all work.
+**Not yet verified:** `mypy` on `backend/ledgerfab` (the target is in the Makefile and CI; the package lands in P2) and CI on a real runner (no git remote yet).
+**Risk:** dependency resolution churn on Windows/Python 3.12. Mitigation: pin via `uv.lock`, committed. *Outcome: resolved clean; uv picked LangGraph 1.2.11 / langchain-openai 1.6.0 — the 1.x line, newer than the floors in the spec era. Noted in D14.*
 
 **Acceptance (spec 00 A1):** *"`make up` runs a hello dashboard; `make eval` runs an empty pass; CI green on a fresh clone."* Stack exactly per spec 00 F: *"Python everywhere · FastAPI backends · Vite+React+TS frontends · LangChain + LangGraph for agent orchestration · no LangChain-classic chains (LCEL/LangGraph only)."*
 **Test plan:** `test_api_smoke.py::test_health` green; `make test` and `make eval` both exit 0 on an empty suite; frontend dev server boots and renders a placeholder.
@@ -261,6 +269,7 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 | 8 | `docker` / compose | Installed (daemon state unverified) | `make dev` runs backend+frontend natively; docker-compose is the packaging deliverable, not the demo path |
 | 9 | Node 24 / npm 11 | Present | — |
 | 10 | Python 3.12.10 + uv 0.11 | Present | — |
+| 11 | TCP port 8000 | **OCCUPIED** by Docker/WSL on this box | **Resolved:** port is an override end to end (`PORT` / `-Port` / `VITE_API_PORT`). Verified on 8123. BLOCKERS.md **B6** |
 
 ---
 
@@ -278,6 +287,10 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 | D8 | Mock LLM replays a deliberately **imperfect** fixture (incl. a wrong and an out-of-CoA answer) | A perfect mock would make the ≥95% auto-precision gate and queue-recall meaningless. The gate must be able to fail. |
 | D9 | `git init` performed at P0 close (not P1) | Repo was not version-controlled, and the work loop requires a commit per phase — including Phase 0 itself. |
 | D10 | Default threshold **0.85**, cost cap **$0.25**/run, model mini-class, temp **0.1** | Cap and temperature are spec-mandated (§11, §8). Threshold is a starting value chosen to make the ≥95% auto-precision gate achievable; it is env-tunable and will be re-derived from eval results in P5 — any change gets logged here. |
+| D11 | **One `pyproject.toml` at the repo root**, not `backend/pyproject.toml` as first mapped | Spec 00 A1 puts `evals/` at the top level, and the eval harness must import both `app` and `ledgerfab`. A single root project gives one venv and one `uv run pytest` that covers `backend/tests` *and* `evals`, instead of a second install step or path hacks. Declared `package = false` (this is a monorepo, not a distributable); imports resolve via pytest `pythonpath` and uvicorn `--app-dir backend`. |
+| D12 | **Tailwind v4** (`@tailwindcss/vite`), so no `tailwind.config.js` / `postcss.config.js` | v4 is the current line and is CSS-first: the aurora tokens of spec 00 A2 live in a real `@theme` block in `components/aurora/tokens.css`, which is a better home for a design system than a JS config object. The two config files in the original file map are therefore not needed and were dropped. |
+| D13 | API port is an override (`PORT` / `-Port` / `VITE_API_PORT`), not a hardcoded 8000 | Port 8000 is occupied by Docker/WSL on the dev box (BLOCKERS.md B6). A demo that only works when one specific port is free is a demo that breaks on someone else's laptop. |
+| D14 | Accept the **1.x** LangGraph / langchain-openai line that uv resolved | `langgraph 1.2.11`, `langchain-core 1.6.1`, `langchain-openai 1.6.0` — newer than the `>=0.2` floors written for the spec era. The APIs used (`StateGraph`, `add_conditional_edges`, `with_structured_output`) are stable across the bump, and `uv.lock` is committed so the resolution is reproducible. |
 
 ---
 

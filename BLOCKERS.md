@@ -94,6 +94,33 @@ correct regardless (PLAN.md DECISIONS LOG **D6**).
 
 ---
 
+## B6 · Port 8000 is already occupied on this machine — RESOLVED (made configurable)
+
+**What.** The conventional FastAPI dev port 8000 is already bound on this box, so
+`uvicorn --port 8000` fails and the demo would die at `make dev`.
+
+**Tried.**
+- `uvicorn --port 8011` → `WinError 10013` ("socket access forbidden"), a Windows/Hyper-V port reservation.
+- `uvicorn --port 8000` → never became reachable.
+- `Get-NetTCPConnection -LocalPort 8000` → held by **`com.docker.backend`** (PID 9376) and
+  **`wslrelay.exe`** (PID 23232), listening on `::`.
+- `netsh interface ipv4 show excludedportrange protocol=tcp` → confirmed several reserved ranges in the
+  50000–64325 region, explaining the 8011 refusal.
+- `uvicorn --port 8123` → **works**; `/api/health` returns 200 and the built SPA is served from `/`.
+
+**Needed.** Nothing external — this is a local port collision, not a missing dependency.
+
+**Resolution.** The API port is now an override everywhere rather than a hardcoded 8000:
+- `Makefile`: `PORT ?= 8000`, used by `dev` / `dev-api`, and exported as `VITE_API_PORT`.
+- `make.ps1`: `-Port` parameter, plus a pre-flight check that fails with the exact fix to type
+  instead of a silent hang.
+- `frontend/vite.config.ts`: the dev proxy target reads `VITE_API_PORT`, so the SPA follows the API.
+
+**Verified command on this box:** `./make.ps1 dev -Port 8123`.
+FINAL_REPORT.md quotes the port-override form so the demo does not depend on 8000 being free.
+
+---
+
 ## B5 · No upstream projects exist (LedgerLab MCP, `aurora-ui` package) — ACCEPTED
 
 **What.** Spec 11 §4 F1 offers an *optional* LedgerLab MCP pull, and spec 00 A2 defines `aurora-ui` as a shared

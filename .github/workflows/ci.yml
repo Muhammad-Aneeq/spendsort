@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Never call OpenAI from CI: no key, no spend, deterministic results (BLOCKERS.md B3).
+  SPENDSORT_MOCK_LLM: "1"
+  SPENDSORT_ENV: ci
+
+jobs:
+  backend:
+    name: lint · typecheck · tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint (ruff)
+        run: |
+          uv run ruff check backend evals
+          uv run ruff format --check backend evals
+
+      - name: Typecheck (mypy)
+        run: uv run mypy backend/app backend/ledgerfab
+
+      - name: Tests (LLM mocked)
+        run: uv run pytest backend/tests -q -m "not live"
+
+  evals:
+    name: eval gate · auto-precision ≥ 95%
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # THE GATE (spec 11 section 10): "auto-precision (accuracy of auto-applied only:
+      # must be >= 95%) ... CI gate on auto-precision". Also asserts queue-recall, so a
+      # confidently-wrong regression cannot pass by queueing nothing.
+      - name: Eval gate
+        run: uv run pytest evals -q -m "not live"
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: evals/report.json
+          if-no-files-found: ignore
+
+  frontend:
+    name: typecheck · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck + build
+        working-directory: frontend
+        run: npm run build

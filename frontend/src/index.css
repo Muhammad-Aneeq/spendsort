@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@import "./components/aurora/tokens.css";
+
+/* Aurora is a dark-first system (spec 00 A2). */
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(900px 600px at 12% -10%, rgb(16 185 129 / 0.1), transparent 60%),
+    radial-gradient(700px 500px at 100% 0%, rgb(56 189 248 / 0.07), transparent 55%),
+    var(--color-navy-deep);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Numbers in tables should line up. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-emerald-glow);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
