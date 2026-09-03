@@ -123,8 +123,15 @@ switch ($Target) {
     }
 
     'seed' {
+        # `ledgerfab` lives under backend/, which is not on sys.path for a bare `python -m`.
+        $env:PYTHONPATH = 'backend'
         Invoke-Step 'ledgerfab export' { uv run python -m ledgerfab.export }
-        Invoke-Step 'build eval cases' { uv run python evals/build_cases.py }
+        if (Test-Path 'evals/build_cases.py') {
+            Invoke-Step 'build eval cases' { uv run python evals/build_cases.py }
+        }
+        else {
+            Write-Host 'skip: evals/build_cases.py lands in P5 (see PLAN.md)' -ForegroundColor DarkGray
+        }
     }
 
     'lint' {

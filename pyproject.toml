@@ -52,7 +52,9 @@ markers = [
 
 [tool.ruff]
 target-version = "py312"
-line-length = 100
+# 120 rather than 100: ledgerfab's vendor catalog and chart of accounts are data tables,
+# and one row per line reads far better than wrapped tuples.
+line-length = 120
 src = ["backend", "evals"]
 
 [tool.ruff.lint]

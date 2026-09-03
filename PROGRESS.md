@@ -101,3 +101,71 @@ the API), with a pre-flight check that prints the exact command to type instead 
 - Recharts was bumped 2.x → 3.x after npm flagged the 2.x branch as no longer maintained.
 
 **Next:** P2 · ledgerfab (spec 00 A3) — the fallback path from B1.
+
+---
+
+## P2 · ledgerfab — DONE (2026-09-03)
+
+Re-read spec 00 A3 before starting. This is the **B1 fallback**: the seed directory the brief pointed at does
+not exist, so the library is built from the spec, scoped to what SpendSort actually reads (PLAN D3).
+
+**Done**
+- `models.py` — typed `World`, `Company`, `Account`, `Counterparty`, `BankTxn`, `GroundTruth(Entry)` in
+  Pydantic v2, frozen and `extra="forbid"`. `World.content_hash()` hashes canonical JSON, which is what makes
+  spec 00 A3's "hash-verifiable" claim testable rather than rhetorical.
+- `config.py` — all seven spec 00 A3 knobs plus the `clean` / `realistic` / `nightmare` presets. The period is
+  a declared `period_start` + `period_days`, never `today()`.
+- `coa.py` — a 20-account small-business expense CoA. **No "Uncategorized" account on purpose**: a catch-all is
+  somewhere for the agent to hide a guess, and the whole design says an unconfident answer goes to a human.
+- `vendors.py` — 51 counterparties with genuinely nasty descriptor aliases (`AMZN Mktp US*{ref}`,
+  `POS DEBIT …`, `SQ *`, `TST*`, store numbers, city/state tails, inconsistent case and spacing). Seven vendors
+  carry `ambiguous_with` — Amazon (supplies vs computer equipment), Uber (transport vs meals), Airbnb (lodging
+  vs rent), and so on — so spec 11 §14's "confidence must drop" is testable on real ambiguity.
+- `generate.py` — seeded generation. One `random.Random` seeded from `(profile, seed)`, no global `random`,
+  explicit tuple iteration only, exact row counts even when splits and duplicates are injected.
+- `ground_truth.py` — labels known **by construction** (vendor picked first, messy descriptor rendered after),
+  and it refuses to emit a label outside the CoA.
+- `export.py` — upload CSV (`date, amount, currency, vendor, memo`), a separate labels CSV, the three
+  `examples/` files with published content hashes, and `backend/app/coa_default.yaml`.
+
+**Ground truth never ships inside the upload CSVs.** The agent has to earn its answers from the descriptor;
+labels live in `evals/`.
+
+**Verified**
+| Check | Result |
+|---|---|
+| `pytest` | **24 passed**, 1 skipped |
+| determinism, all 3 presets | identical hash on repeat; different seed ⇒ different hash; profile part of the seed |
+| clock independence | every date inside the declared period |
+| `clean` really clean | no aliases, one date format, no dupes/splits/FX, every row has a reference |
+| knobs bite | alias share: clean 0% → realistic >50% → nightmare higher |
+| ground truth | every row labelled, every label in the CoA, label matches the generating vendor |
+| ruff / ruff format / mypy | clean (13 source files) |
+| `coa_default.yaml` | parses, 20 accounts |
+
+**Two real bugs the tests caught** — fixed in the generator, not by relaxing the test:
+1. Descriptor case/spacing mangling ran regardless of `alias_rate`, so the `clean` preset still emitted 27.5%
+   mangled descriptors. `clean` that isn't clean makes every alias comparison meaningless. Now gated on
+   `alias_rate`, with the RNG draw taken either way so the stream stays aligned across branches.
+2. Partial payments split into exact halves, which is indistinguishable from a duplicated feed row — the
+   confusion a bookkeeper most cares about. Splits are now uneven (30–70%), asserted at >80% of cases.
+
+**Encoding finding (PLAN D15/D16).** Three CoA names contain an em-dash (`Travel — Airfare`) and this box's
+locale default is `cp1252`, which silently turns them into `Travel â€” Airfare`. Measured directly rather than
+assumed. Consequence for later phases: every read/write passes `encoding="utf-8"` explicitly, and CSV export
+will use `utf-8-sig` so an exported ledger opens correctly in Excel — which matters when the user is a
+bookkeeper. Kept the em-dash rather than dodging it to a hyphen, so the fix is proven instead of avoided.
+
+**Measured for P8.** 93.3% of `month_02` rows use a vendor already present in `month_01` (35 of 45 vendors
+shared). That share is the ceiling on month 2's memory-hit rate, so the cost bend is designed in, not hoped
+for. Hashes: `month_01 d50e0ab7…`, `month_02 5d9d4add…`, `ambiguous 6dfe9ae3…`.
+
+**Honest gaps at P2 close**
+- Ruff's line limit was raised 100 → 120 for the data tables, and the vendor catalog was rewritten from
+  positional 7-tuples to keyword-labelled `_cp(...)` records after the formatter exploded them into a wall.
+  Semantics unchanged (hashes identical); it reads as records now.
+- `make seed` skips the eval-case builder with a printed notice until P5 creates it.
+- Spec 00 A3's invoices, POs, GL entries and accrual schedules are **not** implemented (D3) — SpendSort reads
+  none of them. Documented, not silent.
+
+**Next:** P3 · data model, CoA loader, vendor normalization, CSV intake.

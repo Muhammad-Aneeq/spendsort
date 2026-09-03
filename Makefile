@@ -41,8 +41,10 @@ eval-live: ## Run the eval suite against the real model (needs OPENAI_API_KEY)
 	uv run python evals/run_live.py
 
 seed: ## Regenerate examples/ and evals/cases.jsonl from fixed ledgerfab seeds
-	uv run python -m ledgerfab.export
-	uv run python evals/build_cases.py
+	PYTHONPATH=backend uv run python -m ledgerfab.export
+	@test -f evals/build_cases.py \
+		&& PYTHONPATH=backend uv run python evals/build_cases.py \
+		|| echo "skip: evals/build_cases.py lands in P5 (see PLAN.md)"
 
 lint: ## ruff check
 	uv run ruff check backend evals

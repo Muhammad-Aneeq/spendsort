@@ -164,12 +164,20 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 **Test plan:** `test_api_smoke.py::test_health` green; `make test` and `make eval` both exit 0 on an empty suite; frontend dev server boots and renders a placeholder.
 **Risk:** dependency resolution churn on Windows/Python 3.12. Mitigation: pin via `uv.lock`, committed.
 
-### P2 · ledgerfab — W1
-- [ ] Port/reimplement per spec 00 A3: `World`, chart of accounts, counterparties **with aliases**, bank transactions
-- [ ] Knobs: `alias_rate`, `date_format_chaos`, `amount_noise`, `duplicate_rate`, `missing_reference_rate`; presets `clean` / `realistic` / `nightmare`
-- [ ] Ground-truth emitter — correct category per transaction
-- [ ] `World → CSV` export; generate the three `examples/` files with recorded seeds
-- [ ] Determinism test
+### P2 · ledgerfab — W1 ✅ DONE
+- [x] Reimplement per spec 00 A3 (B1 fallback): typed `World`, 20-account CoA, 51 counterparties **with aliases**, bank transactions
+- [x] Knobs: `alias_rate`, `date_format_chaos`, `amount_noise`, `duplicate_rate`, `missing_reference_rate`, `partial_payment_rate`, `fx_rate` (flag-only); presets `clean` / `realistic` / `nightmare`
+- [x] Ground-truth emitter — correct account per transaction, known **by construction**, with ambiguous rows flagged and their alternate account named
+- [x] `World → CSV` export; the three `examples/` files generated with recorded seeds + published content hashes
+- [x] Determinism test (+ 21 more): same seed+profile ⇒ identical hash; profile is part of the seed; generator never reads the clock
+- [x] `backend/app/coa_default.yaml` **generated** from `ledgerfab/coa.py`, so eval ground truth cannot drift out of CoA alignment
+
+**Acceptance (spec 00 A3):** *"`ledgerfab.generate(profile, seed)` returns a typed World; `world.ground_truth` gives correct matches; determinism test passes"* and *"Seeded → reproducible (same seed+profile = identical dataset, hash-verifiable)."*
+**Test plan:** `test_ledgerfab_determinism.py` — same seed+profile twice ⇒ identical content hash; different seed ⇒ different hash; every emitted transaction's ground-truth account is a member of the CoA.
+**Verified:** 24 tests pass. Determinism holds across all three presets; `clean` is genuinely clean on every knob; alias share rises `clean` 0% → `realistic` >50% → `nightmare` higher still; splits reconcile and are uneven >80% of the time; duplicates are exact same-day copies; row count is exact even with splits/duplicates; ruff + mypy clean.
+**Two bugs the tests caught (fixed in the generator, not the test):** descriptor case/spacing mangling ignored `alias_rate`, so `clean` produced 27.5% mangled descriptors; and partial payments split into exact halves, making them indistinguishable from duplicated rows.
+**Measured for P8:** 93.3% of `month_02` rows use a vendor already seen in `month_01` — that is the ceiling on the memory-hit rate, so the cost bend will be clearly visible rather than hoped for.
+**Risk:** scope creep into invoices/POs/GL that SpendSort never reads. Mitigation: build only the transaction + counterparty-alias + ground-truth surface SpendSort needs; leave the rest documented as out of scope in DECISIONS LOG D3. *Outcome: held — no invoice/PO/GL/accrual code was written.*
 
 **Acceptance (spec 00 A3):** *"`ledgerfab.generate(profile, seed)` returns a typed World; `world.ground_truth` gives correct matches; determinism test passes"* and *"Seeded → reproducible (same seed+profile = identical dataset, hash-verifiable)."*
 **Test plan:** `test_ledgerfab_determinism.py` — same seed+profile twice ⇒ identical content hash; different seed ⇒ different hash; every emitted transaction's ground-truth account is a member of the CoA.
@@ -290,6 +298,8 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 | D11 | **One `pyproject.toml` at the repo root**, not `backend/pyproject.toml` as first mapped | Spec 00 A1 puts `evals/` at the top level, and the eval harness must import both `app` and `ledgerfab`. A single root project gives one venv and one `uv run pytest` that covers `backend/tests` *and* `evals`, instead of a second install step or path hacks. Declared `package = false` (this is a monorepo, not a distributable); imports resolve via pytest `pythonpath` and uvicorn `--app-dir backend`. |
 | D12 | **Tailwind v4** (`@tailwindcss/vite`), so no `tailwind.config.js` / `postcss.config.js` | v4 is the current line and is CSS-first: the aurora tokens of spec 00 A2 live in a real `@theme` block in `components/aurora/tokens.css`, which is a better home for a design system than a JS config object. The two config files in the original file map are therefore not needed and were dropped. |
 | D13 | API port is an override (`PORT` / `-Port` / `VITE_API_PORT`), not a hardcoded 8000 | Port 8000 is occupied by Docker/WSL on the dev box (BLOCKERS.md B6). A demo that only works when one specific port is free is a demo that breaks on someone else's laptop. |
+| D15 | **Every file read/write passes `encoding="utf-8"` explicitly; CSV export uses `utf-8-sig`** | Measured, not assumed: three CoA account names contain an em-dash (`Travel — Airfare`), and this box's locale default is `cp1252`, which silently renders them `Travel â€” Airfare`. Any reader that omits the encoding corrupts the chart of accounts. The BOM on export is what makes Excel open an exported ledger correctly — which matters, since a bookkeeper is the user. Asserted by test rather than left to convention. |
+| D16 | Keep the em-dash in account names rather than downgrading to a hyphen | Sidestepping the character would hide the encoding bug instead of fixing it, and the CSV hardening that spec 11 §11 asks for has to survive real-world text anyway. |
 | D14 | Accept the **1.x** LangGraph / langchain-openai line that uv resolved | `langgraph 1.2.11`, `langchain-core 1.6.1`, `langchain-openai 1.6.0` — newer than the `>=0.2` floors written for the spec era. The APIs used (`StateGraph`, `add_conditional_edges`, `with_structured_output`) are stable across the bump, and `uv.lock` is committed so the resolution is reproducible. |
 
 ---
