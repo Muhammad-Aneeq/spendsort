@@ -241,3 +241,85 @@ is the audit record. Neutralising `=cmd|...` happens on **export** (P6), which i
 spreadsheet would actually evaluate it. Asserted in both directions so the intent is explicit.
 
 **Next:** P4 · the categorization graph — exactly 4 nodes, memory bypass, cost cap.
+
+---
+
+## P4 · Categorization graph, memory, routing, cost cap — DONE (2026-09-03)
+
+Re-read spec 11 §4 F2, §8 and §11 first. This is the phase the project exists for.
+
+**Done**
+- `agent/graph.py` — **exactly four nodes**, with the memory bypass as a conditional *edge*
+  from `check_memory` (PLAN D5). Four is a hard constraint, so it gets a structural test.
+- `agent/nodes.py` — the four nodes. `llm_categorize` holds two gates: the **cost check runs
+  before the call** (afterwards the money is already spent) and the **CoA membership check
+  runs in code** on the answer.
+- `agent/llm.py` — `OpenAICategorizer` (`with_structured_output`, `include_raw=True` so real
+  token counts are read rather than estimated) and `MockCategorizer`. Reason length is enforced
+  by truncation, not rejection: a rambling model has still given a usable answer.
+- `costs.py` — one env-overridable pricing table, plus `CostBudget`. An unknown model falls
+  back to the priciest mini-class entry rather than zero, so a typo cannot silently make the
+  cap unenforceable.
+- `services/memory.py` — human mappings are never overwritten by the model. Once a person has
+  answered, no amount of model confidence outranks them.
+- `services/runner.py` — drives the graph, holds the budget, promotes trusted answers, rolls up
+  the run.
+- `routers/runs.py`, `routers/verdicts.py`. The verdict endpoint was pulled forward from P6
+  because the learning loop cannot be *proven* without it.
+
+**How the bypass is proven.** Asserting `source == "memory"` would only show what we *recorded*
+— it would still pass if the LLM had been called and its answer thrown away, and we would have
+paid for it. So the tests inject an `ExplodingCategorizer` that fails the test if invoked at
+all, and separately assert `cost_usd == 0.0`. "Zero LLM cost" is a monetary claim, so it is
+tested as one.
+
+**Two design decisions worth stating plainly.**
+
+1. **`llm-confirmed` promotion is what bends the curve.** Spec 11 §4 F4 allows memory sources
+   of `human | llm-confirmed`. Only human overrides being remembered would leave memory nearly
+   empty, and the headline claim would be theatre. So an answer that was *auto-applied* (i.e.
+   the gate already trusted it without a human) is promoted. A queued guess is **not** — that
+   would launder low confidence into permanent fact, and there is a test for it.
+2. **"Learned" means a human taught us.** An `llm-confirmed` hit is a memory hit but is *not*
+   labelled learned. Labelling the model's own recycled answer as "learned" would overstate
+   what happened to whoever reads the queue.
+
+**Measured, on the shipped example files, in mock mode:**
+
+| run | txns | auto-rate | memory-hit | LLM calls | cost | $/txn |
+|---|---|---|---|---|---|---|
+| month 1 | 120 | 78.3% | 41.7% | 70 | $0.01302 | $0.000109 |
+| month 2 | 120 | 85.0% | **65.0%** | 42 | **$0.00781** | $0.000065 |
+
+**The bend: 40.0% cheaper, LLM calls 70 → 42, memory-hit rate +23 points, auto-rate +6.7
+points.** 68 mappings learned, 6 out-of-CoA hallucinations queued by the gate, 0 transactions
+lost. Month 1 already shows 41.7% memory hits because promotion works *within* a run too — the
+second Starbucks of the month is free.
+
+**Verified**
+| Check | Result |
+|---|---|
+| `pytest` | **213 passed**, 1 skipped |
+| node count | exactly 4; bypass present as an edge; LLM never upstream of memory |
+| memory bypass | `ExplodingCategorizer` never called; cost and tokens all zero |
+| threshold boundary | 0.8499 → queued, 0.85 → auto, 0.86 → auto (inclusive, per "≥") |
+| CoA gate | 5 hallucination shapes queued even at confidence 0.99, with confidence forced to 0 |
+| learning loop | full upload→run→override→re-upload→re-run cycle green through HTTP |
+| cost cap | stops the LLM, queues the remainder, records the truncation, and **memory keeps working for free after the cap** |
+| ruff / format / mypy | clean (33 source files) |
+
+**A test of mine that was wrong, not the code.** I asserted a memory hit for `LYFT *RIDE 4K2J91`
+against a mapping stored under `LYFT`. That descriptor normalizes to `LYFT RIDE` — a separate
+key. Exactly the multi-key reality P3 documented; the test now names its descriptors explicitly
+and says why.
+
+**Honest notes**
+- Two `type: ignore[arg-type]` on `add_node`: LangGraph 1.x types node arguments as
+  `_Node[Never]`, which no explicitly-annotated callable can satisfy. Third-party generics
+  friction, commented as such — the closures stay internally type-checked.
+- The $0.25 cap is generous for a 120-row month (~$0.013 of real spend), so it does not trigger
+  on the demo data. It is exercised by tests that shrink the cap deliberately.
+- Auto-precision is **not** yet measured — that is P5, and it is the number that decides
+  whether the threshold of 0.85 is the right default.
+
+**Next:** P5 · evals, the 100-case suite and the ≥95% auto-precision CI gate.

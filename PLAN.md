@@ -179,10 +179,6 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 **Measured for P8:** 93.3% of `month_02` rows use a vendor already seen in `month_01` — that is the ceiling on the memory-hit rate, so the cost bend will be clearly visible rather than hoped for.
 **Risk:** scope creep into invoices/POs/GL that SpendSort never reads. Mitigation: build only the transaction + counterparty-alias + ground-truth surface SpendSort needs; leave the rest documented as out of scope in DECISIONS LOG D3. *Outcome: held — no invoice/PO/GL/accrual code was written.*
 
-**Acceptance (spec 00 A3):** *"`ledgerfab.generate(profile, seed)` returns a typed World; `world.ground_truth` gives correct matches; determinism test passes"* and *"Seeded → reproducible (same seed+profile = identical dataset, hash-verifiable)."*
-**Test plan:** `test_ledgerfab_determinism.py` — same seed+profile twice ⇒ identical content hash; different seed ⇒ different hash; every emitted transaction's ground-truth account is a member of the CoA.
-**Risk:** scope creep into invoices/POs/GL that SpendSort never reads. Mitigation: build only the transaction + counterparty-alias + ground-truth surface SpendSort needs; leave the rest documented as out of scope in DECISIONS LOG D3.
-
 ### P3 · Data model, CoA, intake — W1 ✅ DONE
 - [x] ORM tables exactly per spec 11 §6: `transactions`, `categorizations`, `verdicts`, `vendor_memory`, `runs` (+ `categorizations.run_id`, needed for the cross-run memory-bend chart, and run-level audit of the cost cap)
 - [x] `coa_default.yaml` + loader + **in-code** membership validation, fail-closed on every hallucination shape
@@ -200,15 +196,27 @@ Phase grouping follows **spec 11 §13**: *"W1 intake + CoA + graph + memory + ro
 **Test plan:** `test_normalize.py` over ledgerfab alias chaos (asserting aliases of one counterparty collapse to one `vendor_norm`); `test_coa_validation.py`; `test_ingest_csv.py` covering formula-injection cells, BOM, mixed date formats, negative/blank amounts, oversized upload.
 **Risk (spec 11 §14):** *"Vendor normalization quality (messy descriptors) → normalize aggressively, test on ledgerfab alias chaos."* Mitigation: the normalizer is tested directly against generated alias sets, not hand-written strings.
 
-### P4 · Categorization graph, memory, routing, cost cap — W1
-- [ ] Graph with **exactly 4 nodes**: `normalize_vendor → check_memory → llm_categorize → route`
-- [ ] Conditional edge: memory hit routes `check_memory → route`, **skipping the LLM**
-- [ ] `llm_categorize`: Pydantic structured output `{account_code, confidence, reason}`, temperature 0.1, reason ≤20 words enforced
-- [ ] Out-of-CoA `account_code` ⇒ forced low confidence + queue
-- [ ] `route`: auto if `confidence ≥ threshold`, else queue; persist `categorizations.source` as `memory | llm`
-- [ ] `vendor_memory` write on override with `source=human`; `hit_count` increments; re-run marks "learned"
-- [ ] Per-run cost cap (default **$0.25**): on exhaustion, remaining transactions are **queued, never silently dropped**
-- [ ] `POST /api/runs` orchestration + `runs` row rollup
+### P4 · Categorization graph, memory, routing, cost cap — W1 ✅ DONE
+- [x] Graph with **exactly 4 nodes**: `normalize_vendor → check_memory → llm_categorize → route`
+- [x] Conditional edge: memory hit routes `check_memory → route`, **skipping the LLM**
+- [x] `llm_categorize`: Pydantic structured output `{account_code, confidence, reason}`, temperature 0.1, reason ≤20 words enforced by truncation
+- [x] Out-of-CoA `account_code` ⇒ forced low confidence + queue (the rejected code is still shown to the reviewer)
+- [x] `route`: auto if `confidence ≥ threshold`, else queue; persists `categorizations.source` as `memory | llm`
+- [x] `vendor_memory` write on override with `source=human`; `hit_count` increments; re-run marks "learned"
+- [x] Per-run cost cap (default **$0.25**): on exhaustion, remaining transactions are **queued, never silently dropped**
+- [x] `POST /api/runs` + `GET /api/runs` orchestration + `runs` row rollup
+- [x] `POST /api/txns/{id}/verdict` — pulled forward from P6, because the learning loop cannot be proven without it
+- [x] `llm-confirmed` promotion: an auto-applied, CoA-valid LLM answer enters memory. **This is the mechanism behind the bend** — if only human overrides were remembered, memory would stay nearly empty and "gets cheaper every month" would be theatre
+
+**Verified:** 213 tests pass; ruff, format, mypy clean. The graph has exactly 4 nodes with the bypass as an edge. The bypass is proven with an `ExplodingCategorizer` that raises if called at all — asserting `source == "memory"` would still have passed if the LLM had been called and its answer discarded, i.e. if money had been spent. Threshold tested at 0.8499 / 0.85 / 0.86, inclusive as the spec's "≥" requires. Out-of-CoA codes queue at **every** confidence, including 0.99.
+**Measured end to end on the shipped example files, mock mode:**
+
+| run | txns | auto-rate | memory-hit | LLM calls | cost |
+|---|---|---|---|---|---|
+| month 1 | 120 | 78.3% | 41.7% | 70 | $0.01302 |
+| month 2 | 120 | 85.0% | **65.0%** | 42 | **$0.00781** |
+
+**The bend is real: 40.0% cheaper per run, LLM calls 70 → 42, memory-hit rate up 23 points.** 68 mappings learned, 6 out-of-CoA hallucinations correctly queued, 0 transactions lost.
 
 **Acceptance (spec 11 §4 F2):** *"Categorization graph (LangGraph, ≤4 nodes): `normalize_vendor → check_memory (learned mappings first, zero LLM cost) → llm_categorize (structured output: {account_code, confidence, reason}) → route (auto ≥ threshold | queue)`."* Spec 11 §8: *"account_code must be in the CoA (validated in code; out-of-CoA = forced low confidence + queue). Reason ≤ 20 words. Temperature 0.1."* Spec 11 §4 F4: *"memory hits bypass the LLM entirely."* Spec 11 §11: *"cost cap per run (default $0.25)."*
 **Test plan:** `test_graph_shape.py` asserts the compiled graph has exactly 4 nodes; `test_graph_memory_bypass.py` injects a FakeLLM that **fails the test if invoked** on a memory hit; `test_routing_threshold.py` boundary cases at, just below, and just above threshold; `test_coa_validation.py` hallucinated account code ⇒ queued; `test_memory_learning.py` override → re-run ⇒ auto + `source` learned-from-human; `test_cost_cap.py` cap reached mid-run ⇒ remainder queued and run row records the truncation.

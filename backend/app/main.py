@@ -19,6 +19,8 @@ from app.db import init_db
 from app.logging import configure_logging, get_logger
 from app.routers import coa as coa_router
 from app.routers import ingest as ingest_router
+from app.routers import runs as runs_router
+from app.routers import verdicts as verdicts_router
 from app.settings import REPO_ROOT, get_settings
 
 settings = get_settings()
@@ -69,6 +71,8 @@ app.add_middleware(
 
 app.include_router(ingest_router.router)
 app.include_router(coa_router.router)
+app.include_router(runs_router.router)
+app.include_router(verdicts_router.router)
 
 
 @app.get("/api/health", tags=["meta"])

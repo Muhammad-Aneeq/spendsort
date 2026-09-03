@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # --- cost control (spec 11 section 11: "cost cap per run (default $0.25)") ---
     cost_cap_usd_per_run: float = Field(default=0.25, gt=0.0)
 
+    # Token prices in USD per 1M tokens. Set BOTH to override the table in app/costs.py
+    # without a code change — prices move, and MODEL_COSTS.md must not go stale (D6, B4).
+    price_input_per_1m: float | None = None
+    price_output_per_1m: float | None = None
+
     # --- LLM (spec 00 F: OpenAI API on Track 1; spec 11 section 8: temperature 0.1) ---
     openai_api_key: str | None = None
     model: str = "gpt-4o-mini"
