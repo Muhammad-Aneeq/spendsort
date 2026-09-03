@@ -400,3 +400,57 @@ Insurance" whose account is "Insurance". A vendor name hinting at its category i
 signal a bookkeeper uses, not an answer key; only the account **code** is now checked.
 
 **Next:** P6 · the remaining API surface (queue, memory, metrics, export).
+
+---
+
+## P6 · Remaining API surface — DONE (2026-09-03)
+
+Re-read spec 11 §7, §4 F3, F5 and F6 first. The backend is now feature-complete.
+
+**Done**
+- `GET /api/queue` — lowest-confidence-first, with rows that carry no decision at all sorting
+  *first*: "we have no idea" deserves a human before "we are 84% sure". Plus
+  `GET /api/queue/transactions` with a status filter, backing the run view and ledger table.
+- `GET /api/memory` — learned mappings with hit counts, most-used first, and the account *name*
+  resolved so the UI never has to look up a code.
+- `GET /api/metrics` — status counts, auto-rate, memory-hit rate, total cost, a 10-bin
+  confidence histogram where each bin is flagged auto/queued, spend by account, and the run
+  series that draws the bend.
+- `GET /api/export` — the categorized ledger.
+
+**Design calls worth recording**
+
+1. **The histogram bins carry their own `auto` flag.** The gate then renders as a visible
+   cliff rather than something the frontend has to recompute and possibly disagree about.
+2. **The category breakdown counts only *decided* lines.** A queued row has no agreed account,
+   and putting a suggestion into a spend report would present a guess as fact.
+3. **Metrics use the latest decision per transaction.** A row categorized twice (a second run
+   after an override) would otherwise double-count history into today's numbers.
+4. **Queued rows still appear in the export.** Omitting them would make the file look complete
+   when a fifth of the month is unreviewed; each carries its `status` and its suggestion.
+5. **Formula injection is neutralised on export, not intake.** The descriptor is stored
+   verbatim because it is the audit record; the spreadsheet is where `=cmd|…` would actually
+   execute. Numeric columns are formatted by us, so a `-45.50` refund never acquires a stray
+   apostrophe — asserted in both directions.
+6. **Export is UTF-8 *with BOM*.** Without it Excel on Windows reads the local codepage and
+   mangles "Travel — Airfare" (the cp1252 trap from D15). Tested by decoding and asserting the
+   em-dash survives and `â€”` does not appear.
+
+**Verified**
+| Check | Result |
+|---|---|
+| `pytest` | **257 passed** |
+| every spec §7 endpoint registered | asserted against the **live OpenAPI schema**, not a comment |
+| queue ordering | confidences come back sorted ascending |
+| the memory bend | `test_the_run_series_shows_the_memory_bend` asserts hit-rate ↑, cost ↓, LLM calls ↓ across two real months |
+| definition of done | one test walks upload → run → queue → override → re-run → learned → export |
+| export | four required fields present; injection escaped; BOM present; negatives intact; empty ledger yields a header |
+| ruff / format / mypy | clean (39 source files) |
+
+**A test-fixture trap worth noting.** `test_an_overridden_line_exports_the_humans_account`
+failed at first with a stale `status`: the verdict was committed by the *request's* session
+while the long-lived test fixture session held a cached copy. Production gives every request a
+fresh session, so this was a test artifact, not a bug — fixed with an explicit `expire_all()`
+and a comment saying why, rather than by weakening the assertion.
+
+**Next:** P7 · aurora components and the frontend screens.

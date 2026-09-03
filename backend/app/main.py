@@ -18,7 +18,11 @@ from app import __version__
 from app.db import init_db
 from app.logging import configure_logging, get_logger
 from app.routers import coa as coa_router
+from app.routers import export as export_router
 from app.routers import ingest as ingest_router
+from app.routers import memory as memory_router
+from app.routers import metrics as metrics_router
+from app.routers import queue as queue_router
 from app.routers import runs as runs_router
 from app.routers import verdicts as verdicts_router
 from app.settings import REPO_ROOT, get_settings
@@ -73,6 +77,10 @@ app.include_router(ingest_router.router)
 app.include_router(coa_router.router)
 app.include_router(runs_router.router)
 app.include_router(verdicts_router.router)
+app.include_router(queue_router.router)
+app.include_router(memory_router.router)
+app.include_router(metrics_router.router)
+app.include_router(export_router.router)
 
 
 @app.get("/api/health", tags=["meta"])

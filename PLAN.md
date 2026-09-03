@@ -268,11 +268,17 @@ suite is for. **Default stays at 0.85** (D10 confirmed by measurement, not assum
 **Test plan:** the eval suite is itself the test; additionally assert `cases.jsonl` has exactly 100 rows, every ground-truth account is CoA-aligned, and queue-recall is reported (not just accuracy) so a "confidently wrong" regression cannot pass.
 **Risk:** a mock LLM that flatters the gate — 100% precision in CI proves nothing about the real model. Mitigation: the mock replays a **fixed, deliberately imperfect** response fixture including wrong and out-of-CoA answers, so queue-recall is genuinely exercised; README STATUS states plainly that the CI number is mock-mode, and the live command is handed to the reviewer in FINAL_REPORT.md.
 
-### P6 · Remaining API surface — W1→W2
-- [ ] `GET /api/queue` — lowest-confidence-first
-- [ ] `POST /api/txns/{id}/verdict` — accept | override, writes `verdicts` + `vendor_memory`
-- [ ] `GET /api/memory` · `GET /api/metrics` · `GET /api/export`
-- [ ] Metrics payload carries **per-run series** for the memory-bend chart
+### P6 · Remaining API surface — W1→W2 ✅ DONE
+- [x] `GET /api/queue` — lowest-confidence-first (+ `GET /api/queue/transactions` with a status filter, for the run view and ledger table)
+- [x] `POST /api/txns/{id}/verdict` — accept | override, writes `verdicts` + `vendor_memory` *(landed in P4)*
+- [x] `GET /api/memory` · `GET /api/metrics` · `GET /api/export`
+- [x] Metrics payload carries the **per-run series** for the memory-bend chart
+- [x] Export neutralises CSV formula injection and ships a BOM so Excel reads the em-dash accounts
+
+**Acceptance (spec 11 §7):** *"POST /api/ingest/csv · POST /api/runs (categorize all pending) · GET /api/queue · POST /api/txns/{id}/verdict · GET /api/memory · GET /api/metrics · GET /api/export."*
+**Test plan:** `test_api_smoke.py` exercises all eight endpoints; queue ordering asserted; `test_export.py` asserts the four required per-line fields.
+**Verified:** 257 tests pass; ruff, format, mypy clean. Endpoint registration is asserted **against the live OpenAPI schema**, not a comment. `test_the_run_series_shows_the_memory_bend` asserts memory-hit rate rises and cost falls across two real months — the launch claim is a test, not a hope. `test_the_definition_of_done_end_to_end` walks upload → run → queue → override → re-run → learned → export in one pass.
+**Risk:** metrics shaped for one screen, then reshaped for charts. Mitigation: design the metrics response from the P8 chart requirements first, then build the endpoint to it. *Outcome: held — the run series and the histogram's per-bin `auto` flag were both designed for the charts before the endpoint was written.*
 
 **Acceptance (spec 11 §7):** *"POST /api/ingest/csv · POST /api/runs (categorize all pending) · GET /api/queue · POST /api/txns/{id}/verdict · GET /api/memory · GET /api/metrics · GET /api/export."*
 **Test plan:** `test_api_smoke.py` exercises all eight endpoints; queue ordering asserted; `test_export.py` asserts the four required per-line fields.
