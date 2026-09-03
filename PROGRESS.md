@@ -542,3 +542,59 @@ appearance:
   PLAN.md and the P4 entry above now carry the correction.
 
 **Next:** P9 · README, MODEL_COSTS.md, architecture diagram, and the final report.
+
+---
+
+## P9 · Docs, honesty pass, final report — DONE (2026-09-03)
+
+**Done**
+- **README** in spec 00 A1's mandatory order, with a STATUS section split into *works and is
+  tested* / *real gaps* / *not built on purpose*.
+- **MODEL_COSTS.md** — the declining-cost story with the arithmetic shown, including the part
+  that undercuts the headline: 36.6% cheaper is 36.6% of about **two cents a month**. Also
+  explains why the $0.25 cap is a circuit breaker rather than a budget (a 300-row month costs
+  ~$0.033, or 13% of it), and how to make it fire for a demo.
+- **docs/architecture.md** — the system, the 4-node graph, the two gates, the learning loop, and
+  a "deliberately absent" section.
+- **FINAL_REPORT.md** — the 10-step click path, the live-eval command, B1–B7 with one-line
+  fixes, three judgement calls, and three next things.
+- PLAN.md fully ticked: **10/10 phases, zero unticked items, zero BLOCKED markers.**
+
+**Two things verified in this phase that had only been assumed**
+
+1. **Docker actually works.** The image had never been built. It builds, the container serves
+   `/api/health` and the SPA, and an upload + run *inside the container* produced numbers
+   **identical** to the native run (75.8% auto, 40.8% memory, $0.013206). `docker compose config`
+   validates. Cleaned up after.
+2. **All four mermaid diagrams parse.** Ran them through the real mermaid parser under jsdom
+   rather than trusting them by eye — a broken diagram renders as an error box on GitHub, right
+   at the top of the README. Needed one fix along the way: Node 24 makes `globalThis.navigator`
+   getter-only, so it has to be redefined rather than assigned.
+
+**A stale-number correction.** P4's reported bend figures (78.3%/41.7% → 85.0%/65.0%) were
+measured *before* P5 deliberately made the mock fallible, so they no longer matched anything
+shipping. Corrected to 75.8%/40.8% → 81.7%/62.5% in PLAN.md, and the P4 entry above now carries
+a "superseded" note pointing at the current values. The conclusion never changed; the arithmetic
+did, and leaving two sets of numbers in the repo would have been worse than either.
+
+**Final state**
+| Check | Result |
+|---|---|
+| backend tests | **257 passed** |
+| eval gate | **13 passed** — auto-precision 96.10% ≥ 95% |
+| frontend render tests | **22 passed** |
+| ruff / ruff-format / mypy / tsc | all clean |
+| production build | clean |
+| Docker image | builds, serves, and categorizes correctly |
+| mermaid | 4/4 blocks parse |
+| PLAN.md | 10/10 phases ticked |
+
+**What remains genuinely undone, and is labelled everywhere it matters:**
+- **No live eval number** (B3) — the 96.10% measures the harness, not GPT-4o-mini. One command
+  fixes it, handed over in FINAL_REPORT.md §2.
+- **Nobody has looked at the UI** (B7) — 22 render tests cover mounting and content; layout is
+  unverified. The screenshot and demo-video slots are empty rather than faked.
+- **CI has never run on a real runner** — no git remote exists.
+
+That is the whole gap list. It is repeated in README STATUS, `evals/README.md`, MODEL_COSTS.md
+and FINAL_REPORT.md, so a green number cannot be quoted out of context.

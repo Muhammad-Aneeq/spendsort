@@ -326,12 +326,20 @@ suite is for. **Default stays at 0.85** (D10 confirmed by measurement, not assum
 **Test plan:** run `month_01` then `month_02`, assert the API series shows memory-hit rate strictly increasing and cost-per-run strictly decreasing between run 1 and run 2; verify the exported CSV opens cleanly and carries all four fields.
 **Risk:** the bend fails to appear because month 2 shares too few vendors with month 1. Mitigation: `month_02` is generated from the **same counterparty catalog** by construction; the two-run assertion above is a real test, not a demo hope. I will use the `dataviz` skill before writing chart code.
 
-### P9 · Docs, honesty pass, final report — W2
-- [ ] README: screenshot slot → pitch → **mermaid** architecture → **"⚠️ All data synthetic"** banner → quickstart → honest STATUS → ex-accountant line
-- [ ] `MODEL_COSTS.md` with the declining-cost story
-- [ ] `docs/architecture.md`
-- [ ] PLAN.md fully ticked or BLOCKED-marked; PROGRESS.md complete; BLOCKERS.md current
-- [ ] `FINAL_REPORT.md`: demo script, exact commands **including the live-eval command**, blockers + one-line fixes, three next things
+### P9 · Docs, honesty pass, final report — W2 ✅ DONE
+- [x] README in spec 00 A1's mandatory order: screenshot slot → pitch → **mermaid** architecture → demo-video slot → **"⚠️ All data synthetic"** banner → quickstart → honest STATUS → ex-accountant line
+- [x] `MODEL_COSTS.md` with the declining-cost story and the arithmetic shown
+- [x] `docs/architecture.md` — the graph, the two gates, the learning loop, and what is deliberately absent
+- [x] PLAN.md fully ticked; PROGRESS.md complete; BLOCKERS.md current (B1–B7)
+- [x] `FINAL_REPORT.md`: demo script, exact commands **including the live-eval command**, blockers + one-line fixes, three next things
+- [x] **Docker verified** — image builds, container serves health + SPA, and an upload+run inside it produced numbers identical to the native run
+- [x] **All 4 mermaid blocks parsed** with the real mermaid parser, so no diagram renders as an error box
+
+**Acceptance (spec 00 A1):** *"README skeleton sections (mandatory order): screenshot → one-line pitch → architecture diagram → demo video link → '⚠️ All data synthetic' banner → quickstart → 'Built by an ex-accountant turned AI engineer' line."* Spec 00 D: *"Every repo publishes MODEL_COSTS.md."*
+**Test plan:** fresh-clone rehearsal — `make dev`, upload `examples/month_01…`, run, review queue, override, re-run `month_02`, confirm "learned", read the dashboard, export CSV. Any step that does not work verbatim gets fixed or documented in STATUS, not quietly omitted.
+**Verified:** the full path was exercised **over HTTP** end to end (uploads, runs, verdict, memory, metrics, export) and again **inside the Docker container**; `test_the_definition_of_done_end_to_end` runs the same sequence as a test. 279 tests pass; ruff, format, mypy, tsc clean.
+**Not verified, and stated as such in README STATUS:** the *visual* rehearsal — no browser (B7). Screenshot and demo-video slots are deliberately empty rather than faked.
+**Risk:** a README that overclaims. Mitigation: STATUS states mock-vs-live eval mode, the demo-video slot is marked not-recorded rather than faked, and no screenshot is claimed that I have not produced. *Outcome: held — STATUS carries a "Real gaps" section listing all six, and the mock-mode caveat is repeated in `evals/README.md`, `MODEL_COSTS.md` and `FINAL_REPORT.md` so it cannot be read out of context.*
 
 **Acceptance (spec 00 A1):** *"README skeleton sections (mandatory order): screenshot → one-line pitch → architecture diagram → demo video link → '⚠️ All data synthetic' banner → quickstart → 'Built by an ex-accountant turned AI engineer' line."* Spec 00 D: *"Every repo publishes MODEL_COSTS.md."*
 **Test plan:** fresh-clone rehearsal — `make dev`, upload `examples/month_01…`, run, review queue, override, re-run `month_02`, confirm "learned", read the dashboard, export CSV. Any step that does not work verbatim gets fixed or documented in STATUS, not quietly omitted.
