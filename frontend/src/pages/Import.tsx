@@ -60,8 +60,8 @@ export default function Import() {
       >
         <label
           className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg
-            border border-dashed border-hairline bg-glass/40 px-6 py-10 text-center transition-colors
-            hover:border-emerald/40 hover:bg-emerald/5"
+            border border-dashed border-hairline bg-card/40 px-6 py-10 text-center transition-colors
+            hover:border-accent/40 hover:bg-accent/5"
         >
           <span className="text-2xl" aria-hidden>
             ⬆
@@ -111,7 +111,7 @@ export default function Import() {
             )}
 
             {result.errors.length > 0 && (
-              <details className="rounded-lg border border-hairline bg-glass/40 p-3">
+              <details className="rounded-lg border border-hairline bg-card/40 p-3">
                 <summary className="cursor-pointer text-sm font-medium text-ink-muted">
                   Rejected rows ({result.rejected}) — every one, with a reason
                 </summary>
@@ -182,8 +182,8 @@ export default function Import() {
             onChange={(event) => setDraft(event.target.value)}
             spellCheck={false}
             rows={20}
-            className="w-full rounded-lg border border-hairline bg-navy-deep/60 p-3 font-mono text-xs
-              text-ink outline-none focus:border-emerald/50"
+            className="w-full rounded-lg border border-hairline bg-paper-deep/60 p-3 font-mono text-xs
+              text-ink outline-none focus:border-accent/50"
           />
         ) : coa.data && coa.data.accounts.length > 0 ? (
           <div className="overflow-x-auto">
@@ -198,7 +198,7 @@ export default function Import() {
               <tbody>
                 {coa.data.accounts.map((account) => (
                   <tr key={account.code} className="border-b border-hairline/40 last:border-0">
-                    <td className="tabular py-2 pr-4 font-mono text-emerald">{account.code}</td>
+                    <td className="tabular py-2 pr-4 font-mono text-accent">{account.code}</td>
                     <td className="py-2 pr-4 whitespace-nowrap text-ink">{account.name}</td>
                     <td className="py-2 text-ink-faint">{account.description}</td>
                   </tr>

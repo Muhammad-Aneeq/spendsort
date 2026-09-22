@@ -10,6 +10,7 @@ Ground truth is **not** in these files; the labels live in `evals/`.
 |---|---|---|---|---|---|
 | `month_01_realistic_seed42.csv` | realistic | 42 | 120 | Jan 2026 | First run. Vendor memory is cold, so almost everything costs an LLM call. |
 | `month_02_realistic_seed43.csv` | realistic | 43 | 120 | Feb 2026 | Second run, same vendor catalogue. Memory now covers the repeat vendors, so the LLM is called less and cost-per-run bends downward — this is the launch-post chart. |
+| `month_03_demo_small_seed44.csv` | realistic | 44 | 18 | Apr 2026 | A deliberately small third month, for demos and screen recordings: 18 rows run against a live model in seconds rather than minutes, and memory is already warm so the bend has a third point. |
 | `ambiguous_edge_cases.csv` | realistic | 77 | 24 | Mar 2026 | Every row is a vendor with two defensible accounts (Amazon, Uber, Airbnb, ...). Correct behaviour is LOW confidence and a queued row, not a lucky guess. |
 
 ## Determinism
@@ -20,4 +21,5 @@ Each world is hash-verifiable (spec 00 A3). Current content hashes:
 |---|---|
 | `month_01_realistic_seed42.csv` | `ea326e6134eba239445d84ca6c53a02b…` |
 | `month_02_realistic_seed43.csv` | `477b77da95213d78c281d3791316967e…` |
+| `month_03_demo_small_seed44.csv` | `81fa4cc3d3b57f25e6426ea0fd8be149…` |
 | `ambiguous_edge_cases.csv` | `15f2e6a6918dda6c6e5a156fed097a08…` |

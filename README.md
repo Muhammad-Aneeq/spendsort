@@ -64,9 +64,11 @@ Full walkthrough: [`docs/architecture.md`](docs/architecture.md).
 
 ## Demo video
 
-**Not recorded.** Spec 00 E asks for a 60–90s demo; producing one needs a browser and a screen
-recorder, neither available here. The demo *script* — the exact click path, with what to look for
-at each step — is in [`FINAL_REPORT.md`](FINAL_REPORT.md).
+**[`demo/output/spendsort-demo.mp4`](demo/output/spendsort-demo.mp4)** — 1:34, 1280×720, with
+burnt-in captions because LinkedIn autoplays muted.
+
+Everything in it is a real run against the live model; nothing is staged or sped up. Reproduce
+it with `node demo/record-demo.mjs` from `frontend/` (see [`demo/README.md`](demo/README.md)).
 
 ---
 
@@ -139,28 +141,49 @@ Copy `.env.example` to `.env`. The two settings that matter:
 ## The memory bend
 
 The claim this project exists to make. Two months of the shipped example data, identical volume,
-nothing tuned between runs:
+nothing tuned between runs, **live against `gpt-5.6-luna`**:
 
-| run | transactions | memory-hit rate | LLM calls | cost |
-|---|---|---|---|---|
-| month 1 | 120 | 40.8% | 71 | $0.013206 |
-| month 2 | 120 | **62.5%** | 45 | **$0.008370** |
+| run | transactions | auto-applied | memory-hit rate | model calls | cost |
+|---|---|---|---|---|---|
+| month 1 | 120 | 83.3% | 41.7% | 70 | $0.028 |
+| month 2 | 120 | **92.5%** | **72.5%** | **33** | **$0.013** |
 
-**36.6% cheaper.** The only thing that changed is that memory had seen these vendors before.
+**51% cheaper per transaction, and more accurate.** The only thing that changed is that memory
+had seen these vendors before. It also got faster: 116s → 52s.
 
 The ceiling is measurable and it is *not* 100%: normalization collapses one vendor's descriptors
-to ~2.4 keys on average, capping month 2 at ~68% (measured). It reached 62.5%. The rest is
-genuinely new vendors, and those will always cost a call. Full arithmetic — including why "36%
-cheaper" is 36% of about two cents a month — is in [`MODEL_COSTS.md`](MODEL_COSTS.md).
+to ~2.4 keys on average, so a share of every month is genuinely new vendors that will always
+cost a call. Full arithmetic — including the caveat that `gpt-5.6-luna` is not yet in the
+pricing table, so the dollar amounts use a fallback rate — is in
+[`MODEL_COSTS.md`](MODEL_COSTS.md).
 
 ## Evals
 
+**Live, against `gpt-5.6-luna`** — 100 ledgerfab cases with known-correct answers, $0.026:
+
 ```
-accuracy               95.00%
-auto-precision         96.10%   GATE ≥ 95%  [PASS]
-queue-recall           40.00%   (2 of 5 wrong answers were queued)
-auto-rate              77.00%   (77 auto, 23 queued)
+accuracy               99.00%
+auto-precision        100.00%   GATE ≥ 95%  [PASS]
+queue-recall          100.00%   (1 of 1 wrong answers was queued)
+auto-rate              80.00%   (80 auto, 20 queued)
+
+wrong AND auto-applied      0   ← the ones that hurt
+out-of-CoA answers          0   ← the model never invented an account
 ```
+
+One mistake in a hundred, and it queued that one rather than posting it. Unlike a vacuous
+100%, this stands on 80 auto-applied decisions — the suite also gates a minimum auto-rate, so
+an agent that simply queued everything could not score well here.
+
+<details>
+<summary>The mock-mode number CI runs (96.10%) and why it is deliberately worse</summary>
+
+CI has no API key, so it runs the same suite against a fixture with **planted defects** —
+confident confusions between adjacent accounts, unrecognised vendors, and a well-formed
+non-existent account code. That scores 96.10% auto-precision and 40% queue-recall. It exists to
+prove the *harness* works and that the gate is capable of failing; an earlier version of the
+mock scored 100% and made the gate meaningless.
+</details>
 
 **Auto-precision** is the trust number: of the decisions made *without a human*, how many were
 right. **Queue-recall** is the honesty number: of the decisions that were *wrong*, how many were
@@ -190,20 +213,21 @@ Honest state, 2026-09-03. What works, what is untested, and what is missing.
 - All eight spec §7 endpoints, checked against the live OpenAPI schema
 - **301 tests total** (279 backend, 22 frontend); ruff, mypy and tsc clean
 
+- **Verified live** against `gpt-5.6-luna`: 100% auto-precision on 100 cases, and a two-month
+  run with the cost curve bending as designed
+- **The UI has been seen** — recorded with Playwright and inspected frame by frame
+
 ### ⚠️ Real gaps — read these before trusting a number
 
-- **The eval gate runs in mock mode.** There is no API key in this environment
-  (BLOCKERS.md B3), so **96.10% auto-precision measures the harness, not GPT-4o-mini.** It
-  proves scoring, routing, the CoA gate and memory promotion all behave. For a real number:
-  `make eval-live`. The mock is deliberately imperfect so the gate *can* fail — an earlier
-  version scored 100% and made the gate meaningless.
-- **Nobody has looked at the UI.** No browser was available (BLOCKERS.md B7). 22 render tests
-  assert every screen mounts and shows what it should, but they cannot judge **layout** — label
-  collisions, chart overflow and spacing are unverified. The keyboard flow is untested against
-  real browser key events.
-- **No screenshot and no demo video**, for the same reason. Neither is faked.
-- **Prices are unverified** (BLOCKERS.md B4) — dated, and centralised so they are one config
-  change to fix.
+- **Dollar amounts use a placeholder price** (BLOCKERS.md B4). `gpt-5.6-luna` is not in the
+  pricing table, so costs fall back to $0.40/$1.60 per 1M tokens. **Token counts, call counts
+  and every ratio — including "51% cheaper" — are real**, because ratios do not depend on the
+  rate. The absolute dollars do. Fix with `SPENDSORT_PRICE_INPUT_PER_1M` / `..._OUTPUT_PER_1M`;
+  no code change.
+- **The UI has been recorded, not hand-tested.** Frame-by-frame inspection of the demo
+  confirmed all five screens (and caught two real bugs). Still unverified: responsive/mobile
+  layouts, hover and focus states, and the keyboard flow under real key events.
+- **No still screenshot in this README yet** — any frame of the demo video will do.
 - **CI has never run on a real runner.** There is no git remote; the workflow is written but
   unproven.
 - **`ledgerfab` was rebuilt from spec 00 A3**, because the seed directory the brief referenced

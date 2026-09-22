@@ -18,7 +18,7 @@
 param(
     [Parameter(Position = 0)]
     [ValidateSet('help', 'install', 'dev', 'dev-api', 'dev-web', 'test', 'test-live',
-        'eval', 'eval-live', 'seed', 'lint', 'fmt', 'typecheck', 'up', 'down', 'clean')]
+        'eval', 'eval-live', 'seed', 'demo', 'lint', 'fmt', 'typecheck', 'up', 'down', 'clean')]
     [string]$Target = 'help',
 
     # API port. Override when 8000 is occupied (BLOCKERS.md B6).
@@ -60,6 +60,7 @@ switch ($Target) {
             @('eval', 'Eval suite + auto-precision CI gate, mock mode'),
             @('eval-live', 'Eval suite against the real model (needs OPENAI_API_KEY)'),
             @('seed', 'Regenerate examples/ and evals/cases.jsonl from fixed seeds'),
+            @('demo', 'Record the LinkedIn demo video (API must be running)'),
             @('lint', 'ruff check'),
             @('fmt', 'ruff format (writes)'),
             @('typecheck', 'mypy (backend) + tsc (frontend)'),
@@ -135,6 +136,12 @@ switch ($Target) {
         else {
             Write-Host 'skip: evals/build_cases.py not found' -ForegroundColor DarkGray
         }
+    }
+
+    'demo' {
+        Invoke-Step 'build spa' { Push-Location frontend; npm run build; Pop-Location }
+        Invoke-Step 'record' { Push-Location frontend; node demo/record-demo.mjs; Pop-Location }
+        Write-Host 'Convert to mp4 per demo/README.md' -ForegroundColor DarkGray
     }
 
     'lint' {

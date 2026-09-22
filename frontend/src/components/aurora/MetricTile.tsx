@@ -26,8 +26,8 @@ export function MetricTile({
 
   return (
     <div
-      className={`rounded-card border p-4 backdrop-blur-md ${
-        emphasis ? "border-emerald/30 bg-emerald/5" : "border-hairline bg-glass"
+      className={`rounded-card border p-4 shadow-sm ${
+        emphasis ? "border-accent/30 bg-accent/5" : "border-hairline bg-card"
       }`}
     >
       <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{label}</div>

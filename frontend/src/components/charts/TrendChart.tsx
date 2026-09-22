@@ -25,6 +25,7 @@ import {
 import { ChartFrame, DataTable } from "./ChartFrame";
 import {
   AXIS,
+  CHART_SURFACE,
   DOT_SIZE,
   GRID,
   INK_FAINT,
@@ -76,7 +77,10 @@ export function TrendChart({
       }
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 12, right: 44, left: 0, bottom: 4 }}>
+        {/* The right margin has to clear the endpoint label, which for sub-cent costs is as
+            wide as "$0.00024". At 44px it was clipped to "$0.000" — caught by looking at a
+            recorded frame, which no unit test would have flagged. */}
+        <LineChart data={points} margin={{ top: 12, right: 78, left: 0, bottom: 4 }}>
           <CartesianGrid stroke={GRID} vertical={false} />
           <XAxis
             dataKey="label"
@@ -102,8 +106,8 @@ export function TrendChart({
             dataKey="value"
             stroke={color}
             strokeWidth={LINE_WIDTH}
-            dot={{ r: DOT_SIZE, fill: color, stroke: "#0B1E3B", strokeWidth: 2 }}
-            activeDot={{ r: DOT_SIZE + 2, fill: color, stroke: "#0B1E3B", strokeWidth: 2 }}
+            dot={{ r: DOT_SIZE, fill: color, stroke: CHART_SURFACE, strokeWidth: 2 }}
+            activeDot={{ r: DOT_SIZE + 2, fill: color, stroke: CHART_SURFACE, strokeWidth: 2 }}
             isAnimationActive={false}
           >
             {/* Selective direct label: the endpoint only, never a number on every point. */}

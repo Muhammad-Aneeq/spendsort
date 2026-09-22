@@ -121,6 +121,16 @@ def _example_specs() -> tuple[ExampleSpec, ...]:
             ),
         ),
         ExampleSpec(
+            filename="month_03_demo_small_seed44.csv",
+            profile=realistic.model_copy(update={"period_start": date(2026, 4, 1), "period_days": 30, "txn_count": 18}),
+            seed=44,
+            note=(
+                "A deliberately small third month, for demos and screen recordings: 18 rows run "
+                "against a live model in seconds rather than minutes, and memory is already warm "
+                "so the bend has a third point."
+            ),
+        ),
+        ExampleSpec(
             filename="ambiguous_edge_cases.csv",
             profile=realistic.model_copy(
                 update={

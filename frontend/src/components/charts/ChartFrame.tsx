@@ -60,7 +60,7 @@ export function ChartFrame({
           type="button"
           onClick={() => setShowTable((v) => !v)}
           className="rounded-md border border-hairline px-2 py-1 text-[11px] font-medium text-ink-faint
-            transition-colors hover:bg-glass-strong hover:text-ink"
+            transition-colors hover:bg-card-strong hover:text-ink"
           aria-pressed={showTable}
         >
           {showTable ? "Show chart" : "Show numbers"}

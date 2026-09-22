@@ -6,8 +6,10 @@
  * are here — `Card`, `ConfidencePill`, `MetricTile`, `SyntheticDataBanner` — plus `EmptyState`
  * and `Button`, which every screen needed.
  *
- * Tokens live in `tokens.css` as a Tailwind v4 `@theme` block: dark navy #0B1E3B,
- * emerald #10B981, frosted glass, Space Grotesk / Inter.
+ * Tokens live in `tokens.css` as a Tailwind v4 `@theme` block. The palette is a **warm paper**
+ * light theme — parchment #FBF7F0, ink #1A1614, teal #0D9488, terracotta #C2410C — a deliberate
+ * departure from spec 00 A2's dark navy + emerald. Every text/surface pair is contrast-measured;
+ * see the table in `tokens.css`. Type stays Space Grotesk / Inter.
  */
 
 export { Button } from "./Button";

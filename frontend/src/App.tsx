@@ -53,7 +53,7 @@ export default function App() {
                 end={item.end}
                 className={({ isActive }) =>
                   `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                    isActive ? "bg-emerald/15 text-emerald-glow" : "text-ink-muted hover:bg-glass hover:text-ink"
+                    isActive ? "bg-accent/15 text-accent-strong" : "text-ink-muted hover:bg-card hover:text-ink"
                   }`
                 }
               >

@@ -54,7 +54,40 @@ Targets stay in lockstep between the two files; FINAL_REPORT.md gives both invoc
 
 ---
 
-## B3 · No `OPENAI_API_KEY` in the environment — OPEN (expected; workaround active)
+## B3 · No `OPENAI_API_KEY` in the environment — ✅ RESOLVED (2026-09-03)
+
+**Resolved.** A key was supplied and `SPENDSORT_MODEL=gpt-5.6-luna` configured. The live path
+was exercised end to end and the mock-mode caveat that ran through every document is now
+retired.
+
+**Live eval — `make eval-live`, 100 cases, $0.026:**
+
+```
+accuracy               99.00%
+auto-precision        100.00%   GATE >= 95%  [PASS]
+queue-recall          100.00%   (1/1 wrong answers were queued)
+auto-rate              80.00%   (80 auto, 20 queued)
+wrong AND auto-applied      0
+out-of-CoA answers          0
+```
+
+One wrong answer in a hundred, and it was queued rather than posted. Unlike the mock's vacuous
+100%, this figure stands on 80 auto-applied decisions (auto-rate 80%, well clear of the 50%
+floor that guards against an agent that simply queues everything).
+
+**Live two-month run:** memory-hit rate 41.7% → 72.5%, model calls 70 → 33, cost per
+transaction **51% lower**, auto-rate 83.3% → 92.5%. The real model outperformed the mock
+fixture on every axis.
+
+**One caveat remains, tracked under B4:** `gpt-5.6-luna` is not in the pricing table in
+`app/costs.py`, so every dollar figure above was computed with the fallback rate
+(0.40/1.60 per 1M). The token counts and the *shape* of the curve are real; the absolute
+amounts need the true price set via `SPENDSORT_PRICE_INPUT_PER_1M` / `..._OUTPUT_PER_1M`.
+
+<details>
+<summary>Original blocker (kept for the record)</summary>
+
+## B3 (original) · No `OPENAI_API_KEY` in the environment
 
 **What.** No `OPENAI_API_KEY` is set, so no live OpenAI call can be made from this machine. The categorization
 graph, the live eval, and any real cost measurement all need it.
@@ -78,9 +111,36 @@ produced on a machine that has a key.
 **PLAN.md tasks affected.** P5 (live eval verification) — the live path is implemented and marked, but its
 result is **unverified here** by definition.
 
+</details>
+
 ---
 
-## B4 · Model pricing cannot be verified offline — ACCEPTED
+## B4 · Model pricing cannot be verified offline — STILL OPEN, and now the only cost caveat
+
+**What.** Every dollar figure in this repo is computed from real token counts but a **guessed
+per-token price**. `gpt-5.6-luna` is not in the table in `app/costs.py`, so pricing falls back
+to the mini-class default of **$0.40 / $1.60 per 1M** tokens (input/output).
+
+That fallback is deliberate — an unknown model must not silently price at zero and make the
+cost cap unenforceable — but it means the amounts are placeholders.
+
+**What is real regardless of the price:** the token counts (753 in / ~83 out per call), the
+call counts (70 → 33 across two months), and therefore the **shape** of the curve and the
+51% per-transaction reduction. Those are ratios; they do not depend on the rate.
+
+**One-line fix** — no code change, no redeploy:
+
+```bash
+SPENDSORT_PRICE_INPUT_PER_1M=<real>
+SPENDSORT_PRICE_OUTPUT_PER_1M=<real>
+```
+
+Then re-run any month and the dashboard, MODEL_COSTS.md and the export all reprice themselves.
+
+<details>
+<summary>Original blocker (kept for the record)</summary>
+
+## B4 (original) · Model pricing cannot be verified offline — ACCEPTED
 
 **What.** `MODEL_COSTS.md` and the `$0.25` per-run cost cap need per-token prices. I cannot confirm current
 OpenAI list prices from this environment.
@@ -92,9 +152,41 @@ with the date it was written, and is labelled in MODEL_COSTS.md as requiring con
 config change, never a code change. Cost-cap enforcement logic is independent of the specific numbers, so it is
 correct regardless (PLAN.md DECISIONS LOG **D6**).
 
+</details>
+
 ---
 
-## B7 · No browser available to view the UI — OPEN (workaround active)
+## B7 · No browser available to view the UI — ✅ LARGELY RESOLVED (2026-09-03)
+
+**Resolved by a different route than expected.** The Chrome extension is still not connected,
+but recording the demo with **Playwright** produced a video, and extracting frames from it made
+the UI directly inspectable for the first time. The dataviz method's final step — "render it
+and look at it" — has now actually happened.
+
+**Two real defects were found by looking, that no test had caught:**
+
+1. **A clipped axis label.** The cost trend's endpoint label rendered as `$0.000` — the 44px
+   right margin could not fit `$0.00024`. Widened to 78px. A unit test would never have seen
+   this; only a frame does.
+2. **A misleading comparison.** The memory-bend summary compared *cost per run* between months
+   of different sizes (120 rows vs 18), which flattered the result to "92% cheaper". Now
+   normalised to **cost per transaction** — an honest 51% — with a visible note explaining why
+   the normalisation exists. This is exactly the kind of quietly-favourable framing the project
+   is meant to refuse, and it survived every automated check.
+
+**What is now verified by eye:** the warm-light theme across all five screens, the chart of
+accounts, the confidence histogram with its gate line and tooltip, the review queue rows, the
+memory table, the two-panel bend, and the export button.
+
+**What is still not verified:** responsive/mobile layouts, hover and focus states beyond those
+the recording happened to trigger, and the keyboard flow under real key events (the recording
+drives clicks, not keys). The README screenshot slot can now be filled from any frame of
+`demo/output/spendsort-demo.mp4`.
+
+<details>
+<summary>Original blocker (kept for the record)</summary>
+
+## B7 (original) · No browser available to view the UI
 
 **What.** The frontend cannot be *looked at* from this environment. The dataviz method's final
 step is "render it and look at it" — the validator checks colour, not layout, so label
@@ -132,6 +224,8 @@ stronger for correctness even though it cannot judge layout:
 
 **PLAN.md tasks affected.** P7 (manual walkthrough) and P9 (README screenshot) — both proceed
 with the gap stated rather than papered over.
+
+</details>
 
 ---
 

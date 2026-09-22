@@ -1,5 +1,5 @@
 /**
- * aurora `Card` — frosted-glass surface (spec 00 A2).
+ * aurora `Card` — frosted-card surface (spec 00 A2).
  *
  * The one import that makes a screen look like the rest of the portfolio.
  */
@@ -20,8 +20,8 @@ type CardProps = {
 export function Card({ children, title, subtitle, actions, className = "", padded = true }: CardProps) {
   return (
     <section
-      className={`rounded-card border border-hairline bg-glass backdrop-blur-md ${className}`}
-      style={{ boxShadow: "var(--shadow-glass)" }}
+      className={`rounded-card border border-hairline bg-card ${className}`}
+      style={{ boxShadow: "var(--shadow-card)" }}
     >
       {(title || actions) && (
         <header className="flex items-start justify-between gap-4 border-b border-hairline px-5 py-4">

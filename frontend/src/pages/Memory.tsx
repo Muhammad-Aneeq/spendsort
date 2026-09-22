@@ -74,17 +74,17 @@ export default function Memory() {
                       )}
                     </td>
                     <td className="px-5 py-2 whitespace-nowrap">
-                      <span className="font-mono text-emerald">{entry.account_code}</span>{" "}
+                      <span className="font-mono text-accent">{entry.account_code}</span>{" "}
                       <span className="text-ink-muted">{entry.account_name}</span>
                     </td>
                     <td className="px-5 py-2">
                       {entry.source === "human" ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald/40 bg-emerald/15 px-2 py-0.5 text-[11px] font-medium text-emerald-glow">
-                          <span className="size-1.5 rounded-full bg-emerald-glow" aria-hidden />
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent-strong">
+                          <span className="size-1.5 rounded-full bg-accent-strong" aria-hidden />
                           human
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-glass px-2 py-0.5 text-[11px] font-medium text-ink-muted">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-card px-2 py-0.5 text-[11px] font-medium text-ink-muted">
                           <span className="size-1.5 rounded-full bg-ink-faint" aria-hidden />
                           llm-confirmed
                         </span>

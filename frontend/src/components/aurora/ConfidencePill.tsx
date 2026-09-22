@@ -33,8 +33,8 @@ function tone(confidence: number, threshold: number, coaValid: boolean, learned:
   if (learned) {
     return {
       label: "learned",
-      className: "border-emerald/40 bg-emerald/15 text-emerald-glow",
-      dot: "bg-emerald-glow",
+      className: "border-accent/40 bg-accent/15 text-accent-strong",
+      dot: "bg-accent-strong",
     };
   }
   if (!coaValid) {

@@ -17,6 +17,14 @@ import { TrendChart, type TrendPoint } from "../components/charts/TrendChart";
 import { CHART_AUTO, CHART_QUEUED } from "../components/charts/tokens";
 import { api } from "../lib/api";
 import { delta, money, percent, usd } from "../lib/format";
+import type { Run } from "../lib/types";
+
+/** Cost normalised by volume. Runs are different sizes, so raw run totals are not comparable. */
+const perTxn = (run: Run): number => (run.txn_count ? run.cost_usd / run.txn_count : 0);
+
+/** Model calls normalised the same way, for the same reason. */
+const callsPer100 = (run: Run): string =>
+  run.txn_count ? ((100 * run.llm_calls) / run.txn_count).toFixed(0) : "0";
 
 export default function Metrics() {
   const metrics = useQuery({ queryKey: ["metrics"], queryFn: api.metrics });
@@ -133,26 +141,30 @@ export default function Metrics() {
         )}
 
         {hasTrend && first && last && (
-          <div className="mt-5 rounded-lg border border-emerald/25 bg-emerald/5 p-4 text-sm text-ink-muted">
+          <div className="mt-5 rounded-lg border border-accent/25 bg-accent/5 p-4 text-sm text-ink-muted">
             Between run #{first.id} and run #{last.id}: memory-hit rate{" "}
-            <strong className="text-emerald">
+            <strong className="text-accent-strong">
               {percent(first.memory_hit_rate, 0)} → {percent(last.memory_hit_rate, 0)}
             </strong>
-            , model calls{" "}
+            , model calls per 100 transactions{" "}
             <strong className="text-ink">
-              {first.llm_calls} → {last.llm_calls}
+              {callsPer100(first)} → {callsPer100(last)}
             </strong>
-            , cost per run{" "}
-            <strong className="text-emerald">
-              {usd(first.cost_usd)} → {usd(last.cost_usd)}
+            , cost per transaction{" "}
+            <strong className="text-accent-strong">
+              {perTxn(first) === 0 ? "$0" : `$${perTxn(first).toFixed(5)}`} →{" "}
+              {perTxn(last) === 0 ? "$0" : `$${perTxn(last).toFixed(5)}`}
             </strong>
-            {first.cost_usd > 0 && (
-              <>
-                {" "}
-                ({(100 * (1 - last.cost_usd / first.cost_usd)).toFixed(0)}% cheaper)
-              </>
+            {perTxn(first) > 0 && (
+              <> ({(100 * (1 - perTxn(last) / perTxn(first))).toFixed(0)}% cheaper)</>
             )}
             .
+            {first.txn_count !== last.txn_count && (
+              <span className="mt-1 block text-xs text-ink-faint">
+                Normalised per transaction because these runs are different sizes ({first.txn_count} vs{" "}
+                {last.txn_count} rows) — comparing raw run totals would flatter the result.
+              </span>
+            )}
           </div>
         )}
       </Card>
@@ -213,7 +225,7 @@ export default function Metrics() {
                 {data.category_breakdown.map((item) => (
                   <tr key={item.account_code} className="border-b border-hairline/40 last:border-0">
                     <td className="px-5 py-2">
-                      <span className="font-mono text-emerald">{item.account_code}</span>{" "}
+                      <span className="font-mono text-accent">{item.account_code}</span>{" "}
                       <span className="text-ink">{item.account_name}</span>
                     </td>
                     <td className="tabular px-5 py-2 text-right text-ink-muted">{item.count}</td>

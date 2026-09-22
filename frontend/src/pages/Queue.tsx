@@ -107,7 +107,7 @@ export default function Queue() {
         <div
           className={`rounded-lg border p-3 text-sm ${
             flash.startsWith("Learned")
-              ? "border-emerald/40 bg-emerald/10 text-emerald-glow"
+              ? "border-accent/40 bg-accent/10 text-accent-strong"
               : flash.startsWith("Accepted")
                 ? "border-conf-high/40 bg-conf-high/10 text-conf-high"
                 : "border-conf-low/40 bg-conf-low/10 text-conf-low"
@@ -122,10 +122,10 @@ export default function Queue() {
         subtitle={`Lowest confidence first. Anything at or above ${threshold.toFixed(2)} was applied without you.`}
         actions={
           <span className="hidden text-xs text-ink-faint sm:block">
-            <kbd className="rounded bg-glass-strong px-1.5 py-0.5 font-mono">j</kbd>/
-            <kbd className="rounded bg-glass-strong px-1.5 py-0.5 font-mono">k</kbd> move ·{" "}
-            <kbd className="rounded bg-glass-strong px-1.5 py-0.5 font-mono">a</kbd> accept ·{" "}
-            <kbd className="rounded bg-glass-strong px-1.5 py-0.5 font-mono">o</kbd> override
+            <kbd className="rounded bg-card-strong px-1.5 py-0.5 font-mono">j</kbd>/
+            <kbd className="rounded bg-card-strong px-1.5 py-0.5 font-mono">k</kbd> move ·{" "}
+            <kbd className="rounded bg-card-strong px-1.5 py-0.5 font-mono">a</kbd> accept ·{" "}
+            <kbd className="rounded bg-card-strong px-1.5 py-0.5 font-mono">o</kbd> override
           </span>
         }
         padded={false}
@@ -146,7 +146,7 @@ export default function Queue() {
                   key={txn.id}
                   onClick={() => setCursor(index)}
                   className={`px-5 py-3.5 transition-colors ${
-                    selected ? "bg-emerald/5 ring-1 ring-inset ring-emerald/25" : "hover:bg-glass/40"
+                    selected ? "bg-accent/5 ring-1 ring-inset ring-accent/25" : "hover:bg-card/40"
                   }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -177,7 +177,7 @@ export default function Queue() {
                           <span className="text-sm text-ink">
                             {suggestion.coa_valid ? (
                               <>
-                                <span className="font-mono text-emerald">{suggestion.account_code}</span>{" "}
+                                <span className="font-mono text-accent">{suggestion.account_code}</span>{" "}
                                 {suggestion.account_name}
                               </>
                             ) : (
@@ -197,7 +197,7 @@ export default function Queue() {
                           <select
                             ref={selectRef}
                             defaultValue=""
-                            className="rounded-lg border border-hairline bg-navy-raised px-2 py-1.5 text-sm text-ink"
+                            className="rounded-lg border border-hairline bg-paper-raised px-2 py-1.5 text-sm text-ink"
                             onChange={(event) => {
                               if (event.target.value) {
                                 verdict.mutate({

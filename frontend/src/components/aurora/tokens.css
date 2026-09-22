@@ -1,42 +1,61 @@
-/* aurora-ui design tokens — spec 00 A2.
+/* aurora-ui design tokens — "warm paper" light theme.
  *
- * "Tokens: dark navy #0B1E3B, emerald #10B981, frosted-glass surfaces,
- *  Space Grotesk / Inter."
+ * A deliberate departure from spec 00 A2's dark navy + emerald + frosted glass: warm parchment
+ * surfaces, deep ink, teal and terracotta accents. The component API is unchanged, so the
+ * palette is a value swap rather than a rewrite.
  *
- * These are the reason every screenshot across the portfolio is recognizably the same hand.
- * Tailwind v4 reads @theme and generates the utilities (bg-navy, text-emerald, ...).
+ * ── Contrast, measured rather than eyeballed ───────────────────────────────
+ * Ratios against parchment #FBF7F0 / card #FFFFFF (WCAG: 4.5 body text, 3.0 large & UI):
+ *
+ *   ink          #1A1614   16.8 / 18.0   body text
+ *   ink-muted    #5C5349    7.1 /  7.5   secondary text
+ *   ink-faint    #8A7F72    3.7 /  3.9   UI + large only — never body copy
+ *   accent-deep  #0F766E    5.1 /  5.5   teal TEXT
+ *   accent       #0D9488    3.5 /  3.7   teal FILLS only
+ *   conf-mid     #C2410C    4.9 /  5.2   terracotta text
+ *   conf-low     #B91C1C    6.1 /  6.5   red text
+ *
+ * The split between `accent` (fills) and `accent-deep` (text) is the point: the teal that reads
+ * well as a 24px bar is too light to be legible as 12px type. Charts use their own validated
+ * steps — see components/charts/tokens.ts.
  */
 
 @theme {
-  /* --- core palette ------------------------------------------------- */
-  --color-navy: #0b1e3b;
-  --color-navy-deep: #071528;
-  --color-navy-raised: #12294b;
-  --color-emerald: #10b981;
-  --color-emerald-dim: #0e9a6c;
-  --color-emerald-glow: #34d399;
+  /* --- surfaces ------------------------------------------------------ */
+  --color-paper-deep: #f6f0e6; /* page, behind everything */
+  --color-paper: #fbf7f0; /* default warm surface */
+  --color-paper-raised: #ffffff; /* inputs, selects, popovers */
 
-  /* --- confidence scale (ConfidencePill) ----------------------------- */
-  --color-conf-high: #10b981; /* auto-applied */
-  --color-conf-mid: #f59e0b; /* queued, plausible */
-  --color-conf-low: #f43f5e; /* queued, needs a human */
+  /* --- accent (teal) -------------------------------------------------- */
+  --color-accent: #0d9488; /* FILLS: bars, dots, chips */
+  --color-accent-strong: #0f766e; /* TEXT on light, and hover */
+  --color-accent-deep: #115e59; /* pressed / deepest */
 
-  /* --- ink ----------------------------------------------------------- */
-  --color-ink: #f8fafc;
-  --color-ink-muted: #94a3b8;
-  --color-ink-faint: #64748b;
+  /* --- confidence scale (ConfidencePill) ------------------------------ */
+  --color-conf-high: #0d9488; /* auto-applied */
+  --color-conf-mid: #c2410c; /* queued, plausible */
+  --color-conf-low: #b91c1c; /* queued, needs a human */
 
-  /* --- frosted glass surfaces ---------------------------------------- */
-  --color-glass: rgb(255 255 255 / 0.06);
-  --color-glass-strong: rgb(255 255 255 / 0.1);
-  --color-hairline: rgb(255 255 255 / 0.12);
+  /* --- ink ------------------------------------------------------------ */
+  --color-ink: #1a1614;
+  --color-ink-muted: #5c5349;
+  --color-ink-faint: #8a7f72;
 
-  /* --- type ---------------------------------------------------------- */
+  /* --- card surfaces --------------------------------------------------
+   * Named `card` rather than `glass`: on a light theme these are opaque paper,
+   * not a frosted translucency. */
+  --color-card: #ffffff;
+  --color-card-strong: #f3ece1;
+  --color-hairline: rgb(26 22 20 / 0.12);
+
+  /* --- type ------------------------------------------------------------ */
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", monospace;
 
-  /* --- elevation ----------------------------------------------------- */
-  --shadow-glass: 0 1px 0 0 rgb(255 255 255 / 0.05) inset, 0 8px 32px -8px rgb(0 0 0 / 0.6);
+  /* --- elevation ------------------------------------------------------- */
+  /* Warm-tinted rather than neutral black, so shadows sit in the paper. */
+  --shadow-card:
+    0 1px 2px 0 rgb(80 60 40 / 0.06), 0 8px 24px -12px rgb(80 60 40 / 0.18);
   --radius-card: 0.875rem;
 }

@@ -117,10 +117,10 @@ export default function Run() {
               <tbody>
                 {runs.data.map((run) => (
                   <tr key={run.id} className="border-b border-hairline/40 last:border-0">
-                    <td className="tabular px-5 py-2 font-mono text-emerald">#{run.id}</td>
+                    <td className="tabular px-5 py-2 font-mono text-accent">#{run.id}</td>
                     <td className="tabular px-5 py-2 text-ink">{run.txn_count}</td>
                     <td className="tabular px-5 py-2 text-ink">{percent(run.auto_rate)}</td>
-                    <td className="tabular px-5 py-2 text-emerald">{percent(run.memory_hit_rate)}</td>
+                    <td className="tabular px-5 py-2 text-accent">{percent(run.memory_hit_rate)}</td>
                     <td className="tabular px-5 py-2 text-ink-muted">{run.llm_calls}</td>
                     <td className="tabular px-5 py-2 text-ink">{usd(run.cost_usd)}</td>
                     <td className="tabular px-5 py-2 text-ink-faint">

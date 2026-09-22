@@ -4,7 +4,7 @@
 # target below for PowerShell. Keep the two files in lockstep.
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev dev-api dev-web test test-live eval eval-live seed lint fmt typecheck up down clean
+.PHONY: help install dev dev-api dev-web test test-live eval eval-live seed demo lint fmt typecheck up down clean
 
 # Override when 8000 is taken (BLOCKERS.md B6):  make dev PORT=8123
 PORT ?= 8000
@@ -46,6 +46,10 @@ seed: ## Regenerate examples/ and evals/cases.jsonl from fixed ledgerfab seeds
 	@test -f evals/build_cases.py \
 		&& PYTHONPATH=backend uv run python evals/build_cases.py \
 		|| echo "skip: evals/build_cases.py not found"
+
+demo: ## Record the LinkedIn demo video (needs the API running with a built SPA)
+	cd frontend && npm run build && node demo/record-demo.mjs
+	@echo "raw capture written; convert to mp4 per demo/README.md"
 
 lint: ## ruff check
 	uv run ruff check backend evals
