@@ -123,6 +123,8 @@ agent that is confidently wrong about everything, proving the quality gate can a
 
 ## The demo video
 
-`demo/output/spendsort-demo.mp4` — 1:34, 1280×720, ready to upload. Captions are burnt in
-because LinkedIn autoplays muted. Everything in it is a real run against the live model; nothing
-is staged.
+1:34, 1280×720, ready to upload. Captions are burnt in because LinkedIn autoplays muted, and
+everything in it is a real run against the live model — nothing is staged.
+
+It is **not committed** (video is a build artifact, not source). Regenerate with `make demo`,
+which writes `demo/output/`; see [`demo/README.md`](demo/README.md) for the MP4 conversion.

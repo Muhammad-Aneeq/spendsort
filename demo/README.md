@@ -2,11 +2,15 @@
 
 The LinkedIn demo video, and the script that records it.
 
+> **`output/` is gitignored and nothing in it is committed.** Video is a build artifact, not
+> source: it is ~5 MB, it is reproducible in one command, and committing it would make every
+> clone pay for it forever. Run `make demo` to produce it.
+
 | file | what it is |
 |---|---|
-| `output/spendsort-demo.mp4` | **the upload-ready video** — 1:34, 1280×720, H.264 + silent AAC |
-| `output/spendsort-demo.webm` | the raw Playwright capture (VP8) |
-| `../frontend/demo/record-demo.mjs` | the recorder |
+| `output/spendsort-demo.mp4` | the upload-ready video — 1:34, 1280×720, H.264 + silent AAC *(generated)* |
+| `output/spendsort-demo.webm` | the raw Playwright capture, VP8 *(generated)* |
+| `../frontend/demo/record-demo.mjs` | the recorder — **this is the committed part** |
 
 ## Re-recording it
 

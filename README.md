@@ -64,11 +64,16 @@ Full walkthrough: [`docs/architecture.md`](docs/architecture.md).
 
 ## Demo video
 
-**[`demo/output/spendsort-demo.mp4`](demo/output/spendsort-demo.mp4)** — 1:34, 1280×720, with
-burnt-in captions because LinkedIn autoplays muted.
+A 1:34 walkthrough exists but is **not committed** — video is a build artifact, not source, and
+it would bloat every clone. Build it yourself in one command:
 
-Everything in it is a real run against the live model; nothing is staged or sped up. Reproduce
-it with `node demo/record-demo.mjs` from `frontend/` (see [`demo/README.md`](demo/README.md)).
+```bash
+make demo        # Windows: ./make.ps1 demo
+```
+
+It records the real product against the live model with Playwright — the third month is uploaded
+and categorized *during* filming, nothing is staged. Captions are burnt in because LinkedIn
+autoplays muted. Full recipe, including the MP4 conversion, in [`demo/README.md`](demo/README.md).
 
 ---
 
