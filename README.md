@@ -221,6 +221,8 @@ Honest state, 2026-09-03. What works, what is untested, and what is missing.
 - **Verified live** against `gpt-5.6-luna`: 100% auto-precision on 100 cases, and a two-month
   run with the cost curve bending as designed
 - **The UI has been seen** — recorded with Playwright and inspected frame by frame
+- **CI is green on a real runner** — lint, typecheck, 279 backend tests, the eval gate and the
+  frontend build, all three jobs passing on GitHub Actions
 
 ### ⚠️ Real gaps — read these before trusting a number
 
@@ -233,8 +235,6 @@ Honest state, 2026-09-03. What works, what is untested, and what is missing.
   confirmed all five screens (and caught two real bugs). Still unverified: responsive/mobile
   layouts, hover and focus states, and the keyboard flow under real key events.
 - **No still screenshot in this README yet** — any frame of the demo video will do.
-- **CI has never run on a real runner.** There is no git remote; the workflow is written but
-  unproven.
 - **`ledgerfab` was rebuilt from spec 00 A3**, because the seed directory the brief referenced
   does not exist in this repo (BLOCKERS.md B1). It implements only what SpendSort reads.
 
